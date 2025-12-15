@@ -54,7 +54,7 @@
                 position: absolute; left: 0; top: 0; width: 100%;
                 background: white; color: black; z-index: 9999;
             }
-            nav, main, #correction-modal, #login-overlay, #image-viewer-modal { display: none !important; }
+            nav, main, #correction-modal, #login-overlay, #image-viewer-modal, #weight-modal { display: none !important; }
         }
     </style>
 </head>
@@ -109,6 +109,32 @@
         <p class="absolute bottom-4 text-white/30 text-xs pointer-events-none">Scroll mouse untuk zoom, klik & geser untuk melihat detail</p>
     </div>
 
+    <!-- MODAL PENGATURAN BOBOT (UPDATED: Support Decimal) -->
+    <div id="weight-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="card w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-surface flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-800 dark:text-white">Pengaturan Bobot Ujian</h3>
+                <button onclick="closeWeightModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto bg-white dark:bg-deep space-y-4">
+                <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl text-sm text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 mb-4">
+                    <p class="font-bold">Info Perhitungan:</p>
+                    <p>Nilai Akhir = (Total Nilai x Bobot) / (Total Bobot).</p>
+                    <p class="mt-1 text-xs"><strong>Tips:</strong> Anda bisa menggunakan angka desimal. <br>Contoh penyederhanaan: Bobot 10% = 1, Bobot 25% = 2.5.</p>
+                </div>
+                <div id="weight-list-container" class="space-y-3">
+                    <!-- Daftar ujian dan input bobot akan muncul di sini -->
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-surface flex justify-end gap-3">
+                <button onclick="closeWeightModal()" class="px-4 py-2 rounded-lg border hover:bg-gray-200 dark:hover:bg-gray-700 font-bold text-sm">Batal</button>
+                <button id="btn-save-weights" onclick="saveWeights()" class="px-6 py-2 rounded-lg bg-primary hover:bg-sky-600 text-white font-bold shadow-lg text-sm">Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Navbar -->
     <nav class="sticky top-0 z-40 bg-white/90 dark:bg-surface/90 backdrop-blur shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -117,10 +143,16 @@
                     <div class="p-2 bg-primary rounded-lg shadow-lg text-white">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                     </div>
-                    <h1 class="text-xl font-bold tracking-tight">Pengolahan <span class="text-primary">Nilai</span>
-                    <p class="text-[13px] text-gray-500 dark:text-gray-400 italic">Compiled by Koes</p></h1>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight">Pengolahan <span class="text-primary">Nilai</span></h1>
+                        <p class="text-[13px] text-gray-500 dark:text-gray-400 italic">Compiled by Koes</p>
+                    </div>
                 </div>
                 <div class="flex gap-2">
+                    <button onclick="openWeightModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Atur Bobot
+                    </button>
                     <button id="btn-export-excel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm transition-all">
                         Export Excel
                     </button>
@@ -231,6 +263,7 @@
                 <tr class="bg-gray-200">
                     <th class="border border-black p-2 w-10 text-center">No</th>
                     <th class="border border-black p-2 text-left">Mata Ujian / Kegiatan</th>
+                    <th class="border border-black p-2 w-24 text-center">Bobot</th>
                     <th class="border border-black p-2 w-24 text-center">Nilai</th>
                     <th class="border border-black p-2 w-32 text-center">Predikat</th>
                 </tr>
@@ -238,7 +271,7 @@
             <tbody id="print-body"></tbody>
             <tfoot>
                 <tr class="bg-gray-100 font-bold">
-                    <td colspan="2" class="border border-black p-2 text-right">Rata-rata</td>
+                    <td colspan="3" class="border border-black p-2 text-right">Rata-rata Akhir (Terbobot)</td>
                     <td class="border border-black p-2 text-center" id="print-avg">-</td>
                     <td class="border border-black p-2"></td>
                 </tr>
@@ -285,6 +318,70 @@
         window.closeCorrectionModal = closeCorrectionModal;
         window.exportToExcel = exportToExcel;
         
+        // --- WEIGHT MANAGEMENT LOGIC ---
+        window.openWeightModal = () => {
+            const listContainer = document.getElementById('weight-list-container');
+            listContainer.innerHTML = '';
+            
+            if(exams.length === 0) {
+                listContainer.innerHTML = '<div class="text-center text-gray-500 py-4">Belum ada ujian.</div>';
+            } else {
+                exams.forEach(e => {
+                    const bobot = e.bobotNilai || 1; // Default 1
+                    const div = document.createElement('div');
+                    div.className = "flex items-center justify-between p-3 border rounded-lg bg-gray-50 dark:bg-black/20 border-gray-200 dark:border-gray-700";
+                    div.innerHTML = `
+                        <div>
+                            <p class="font-bold text-sm text-gray-800 dark:text-white">${e.namaUjian}</p>
+                            <p class="text-xs text-gray-500">${e.kodeUjian}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs text-gray-500">Bobot:</label>
+                            <!-- UPDATED: Support Step 0.1 for Decimal -->
+                            <input type="number" class="exam-weight-input w-20 p-2 rounded border text-center font-bold outline-none focus:ring-2 ring-primary bg-white dark:bg-surface dark:text-white dark:border-gray-600" 
+                                data-id="${e.id}" value="${bobot}" min="0.1" step="0.1">
+                        </div>
+                    `;
+                    listContainer.appendChild(div);
+                });
+            }
+
+            document.getElementById('weight-modal').classList.remove('hidden');
+            document.getElementById('weight-modal').classList.add('flex');
+        };
+
+        window.closeWeightModal = () => {
+            document.getElementById('weight-modal').classList.add('hidden');
+            document.getElementById('weight-modal').classList.remove('flex');
+        };
+
+        window.saveWeights = async () => {
+            const inputs = document.querySelectorAll('.exam-weight-input');
+            const btn = document.getElementById('btn-save-weights');
+            const originalText = btn.innerText;
+            btn.innerText = 'Menyimpan...'; btn.disabled = true;
+            
+            try {
+                const promises = [];
+                inputs.forEach(inp => {
+                    const docId = inp.dataset.id;
+                    // UPDATED: Convert comma to dot before parsing float to support ID locale
+                    const rawVal = inp.value.replace(',', '.');
+                    const val = parseFloat(rawVal) || 1;
+                    promises.push(updateDoc(doc(db, 'ujian_terjadwal', docId), { bobotNilai: val }));
+                });
+                
+                await Promise.all(promises);
+                alert("Bobot berhasil disimpan!");
+                closeWeightModal();
+                loadAllData(); // Reload to reflect changes
+            } catch(e) {
+                alert("Gagal: " + e.message);
+            } finally {
+                btn.innerText = originalText; btn.disabled = false;
+            }
+        };
+
         // --- ZOOM VIEWER LOGIC ---
         window.openImageViewer = (src) => {
             const img = document.getElementById('image-viewer-content');
@@ -422,7 +519,9 @@
                     const data = d.data();
                     if(data.status !== 'dihapus') {
                         const hasManualCorrection = (data.daftarIdSoal || []).some(id => manualCorrectionIds.has(id));
-                        exams.push({ id: d.id, hasManualCorrection: hasManualCorrection, ...data });
+                        // Load bobotNilai, default to 1 if not exists
+                        const bobot = data.bobotNilai || 1;
+                        exams.push({ id: d.id, hasManualCorrection: hasManualCorrection, bobotNilai: bobot, ...data });
                     }
                 });
                 exams.sort((a,b) => new Date(b.tanggal || 0) - new Date(a.tanggal || 0));
@@ -445,11 +544,12 @@
                     th.className = "px-6 py-4 text-center whitespace-nowrap relative group hover:bg-black/5 dark:hover:bg-white/5 transition-colors";
                     const eyeIcon = e.settingTampilNilai ? '👁️' : '🙈'; 
                     const eyeTitle = e.settingTampilNilai ? 'Nilai Tampil ke Siswa' : 'Nilai Disembunyikan';
+                    const weightBadge = e.bobotNilai > 1 ? `<span class="bg-primary/20 text-primary px-1 rounded text-[9px] ml-1">x${e.bobotNilai}</span>` : '';
                     
                     th.innerHTML = `
                         <div class="flex flex-col items-center">
                             <span class="text-[10px] opacity-50 font-normal flex items-center gap-1">${e.kodeUjian} <span title="${eyeTitle}" class="cursor-help">${eyeIcon}</span></span>
-                            <span>${e.namaUjian}</span>
+                            <span class="flex items-center">${e.namaUjian} ${weightBadge}</span>
                             <button onclick="window.deleteExamPermanently('${e.id}', '${e.namaUjian}', '${e.kodeUjian}')" class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all shadow-md z-20 cursor-pointer" title="Hapus Permanen">
                                 <svg class="w-3 h-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
@@ -480,15 +580,19 @@
             });
 
             filtered.forEach(s => {
-                let total = 0, count = 0;
+                let totalWeightedScore = 0;
+                let totalWeight = 0;
+                
                 exams.forEach(e => {
                     const sc = scores[s.id]?.[e.kodeUjian];
                     if(sc && sc.skor !== undefined) {
-                        total += parseFloat(sc.skor);
-                        count++;
+                        const weight = parseFloat(e.bobotNilai) || 1;
+                        totalWeightedScore += parseFloat(sc.skor) * weight;
+                        totalWeight += weight;
                     }
                 });
-                s.avg = count > 0 ? (total / count) : 0;
+                // Calculate Weighted Average
+                s.avg = totalWeight > 0 ? (totalWeightedScore / totalWeight) : 0;
             });
 
             filtered.sort((a, b) => {
@@ -604,7 +708,6 @@
                 }
 
                 // MERGE AUTO-GRADED SCORES INTO MANUAL SCORES FIRST
-                // Ini penting agar saat kita hanya menampilkan Esai, nilai PG tidak hilang/nol
                 const mergedManualScores = { ...record.manualScores };
                 
                 questions.forEach(q => {
@@ -734,7 +837,7 @@
             
             // 1. Ambil nilai Esai dari Input DOM
             const inputs = document.querySelectorAll('.manual-score-input');
-            const finalScores = { ...currentCorrectionData.manualScores }; // Start with existing scores (including auto-graded PGs)
+            const finalScores = { ...currentCorrectionData.manualScores }; 
 
             inputs.forEach(inp => {
                 let val = parseFloat(inp.value);
@@ -742,10 +845,10 @@
                 const qid = inp.dataset.qid;
                 if(isNaN(val)) val = 0;
                 if(val > max) val = max;
-                finalScores[qid] = val; // Update essay score
+                finalScores[qid] = val; 
             });
 
-            // 2. Hitung Total Skor (PG Otomatis + Esai Manual)
+            // 2. Hitung Total Skor
             let totalScore = 0;
             let maxScore = 0;
 
@@ -753,7 +856,6 @@
                 const bobot = (currentCorrectionData.examData.kustomisasiBobot && currentCorrectionData.examData.kustomisasiBobot[q.id]) ? parseInt(currentCorrectionData.examData.kustomisasiBobot[q.id]) : (parseInt(q.skor) || 1);
                 maxScore += bobot;
                 
-                // Jika soal ada di finalScores (baik PG yg auto-grade atau Esai yg baru diinput), tambahkan
                 if (finalScores[q.id] !== undefined) {
                     totalScore += finalScores[q.id];
                 }
@@ -764,7 +866,8 @@
             try {
                 await updateDoc(doc(db, 'hasil_ujian', currentCorrectionData.docId), {
                     skor: parseFloat(finalPercent),
-                    manualScores: finalScores, // Simpan semua nilai (PG+Esai)
+                    manualScores: finalScores, 
+                    dikoreksiOleh: auth.currentUser.uid,
                     dikoreksiPada: new Date()
                 });
                 alert(`Tersimpan. Nilai Akhir Siswa: ${finalPercent}`);
@@ -802,6 +905,7 @@
             exams.forEach((e, idx) => {
                 const record = scores[s.id]?.[e.kodeUjian];
                 const val = record ? Math.round(record.skor) : 0;
+                const bobot = e.bobotNilai || 1;
                 
                 let predikat = "D";
                 if(val >= 90) predikat = "A";
@@ -811,6 +915,7 @@
                 tbody.innerHTML += `<tr>
                     <td class="border border-black p-2 text-center">${idx+1}</td>
                     <td class="border border-black p-2">${e.namaUjian}</td>
+                    <td class="border border-black p-2 text-center">${bobot}</td>
                     <td class="border border-black p-2 text-center font-bold">${val}</td>
                     <td class="border border-black p-2 text-center">${predikat}</td>
                 </tr>`;
@@ -820,5 +925,4 @@
         }
     </script>
 </body>
-
 </html>
