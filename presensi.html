@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presensi Hybrid - Comfort & Glow</title>
+    <title>Presensi Hybrid & Agenda - Comfort & Glow</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -74,6 +74,7 @@
         </div>
     </div>
 
+    <!-- Zoom Viewer Modal -->
     <div id="zoom-viewer-modal" class="fixed inset-0 z-[200] bg-black/95 hidden flex-col">
         <div class="absolute top-4 right-4 z-50 flex gap-2">
             <button onclick="window.zoomIn()" class="p-2 bg-white/20 rounded-full text-white hover:bg-white/30"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></button>
@@ -87,6 +88,7 @@
         </div>
     </div>
 
+    <!-- Main Navigation -->
     <nav class="sticky top-0 z-40 bg-white/90 dark:bg-cyber-800/90 backdrop-blur shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
@@ -119,6 +121,7 @@
         </div>
     </nav>
 
+    <!-- Fullscreen QR Mode -->
     <div id="qr-fullscreen" class="fixed inset-0 z-[100] bg-white dark:bg-black flex-col items-center justify-center p-10 hidden">
         <button onclick="window.toggleQrFullscreen()" class="absolute top-6 right-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-full shadow-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
             <svg class="w-8 h-8 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -133,6 +136,7 @@
         </div>
     </div>
 
+    <!-- Proof Modal -->
     <div id="proof-modal" class="fixed inset-0 z-[60] hidden bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-cyber-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl relative">
             <button onclick="document.getElementById('proof-modal').classList.add('hidden')" class="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 z-10">
@@ -160,6 +164,7 @@
         </div>
     </div>
 
+    <!-- Report Panel (Modal) -->
     <div id="report-panel" class="fixed inset-0 z-50 hidden bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
         <div class="min-h-screen flex items-center justify-center p-4">
             <div class="bg-white dark:bg-cyber-800 w-full max-w-6xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
@@ -222,9 +227,58 @@
         </div>
     </div>
 
+    <!-- Agenda History Modal (NEW) -->
+    <div id="agenda-history-modal" class="fixed inset-0 z-[70] hidden bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
+        <div class="min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-cyber-800 w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700">
+                <div class="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-orange-50 dark:bg-cyber-900/50 rounded-t-2xl">
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <span class="bg-orange-500 text-white p-1 rounded">📅</span> Riwayat Agenda Guru
+                    </h3>
+                    <button onclick="document.getElementById('agenda-history-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <div class="p-4 bg-white dark:bg-cyber-800 border-b border-gray-200 dark:border-gray-700 flex gap-4">
+                    <div class="flex-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Filter Bulan</label>
+                        <input type="month" id="agenda-history-month" class="w-full p-2 border rounded bg-gray-50 dark:bg-cyber-900 dark:text-white dark:border-gray-600">
+                    </div>
+                    <button onclick="window.fetchAgendaHistory()" class="self-end bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded shadow transition-colors">Tampilkan Riwayat</button>
+                    <!-- Tombol Export Excel (CSV) Baru -->
+                    <button onclick="window.exportAgendaExcel()" class="self-end bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Excel
+                    </button>
+                </div>
+
+                <div class="p-6 overflow-y-auto max-h-[60vh]">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 font-bold sticky top-0">
+                            <tr>
+                                <th class="p-3 border dark:border-gray-600 w-12 text-center">No</th>
+                                <th class="p-3 border dark:border-gray-600 w-32 text-center">Tanggal</th>
+                                <th class="p-3 border dark:border-gray-600">Kegiatan / Agenda</th>
+                                <th class="p-3 border dark:border-gray-600 w-24 text-center">Kelas</th>
+                                <th class="p-3 border dark:border-gray-600 w-20 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agenda-history-body" class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr><td colspan="5" class="p-8 text-center text-gray-400 italic">Pilih bulan untuk melihat riwayat agenda.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         
+        <!-- LEFT COLUMN -->
         <div class="space-y-6">
+            <!-- QR Card -->
             <div class="bg-white dark:bg-cyber-800 rounded-2xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                 <div class="p-4 bg-pink-500 text-white text-center flex justify-between items-center">
                     <h2 class="font-bold text-lg">QR Code Kelas</h2>
@@ -248,6 +302,7 @@
                 </div>
             </div>
 
+            <!-- Summary Stats -->
             <div class="bg-white dark:bg-cyber-800 rounded-2xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
                 <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-4">Ringkasan Hari Ini</h3>
                 <div class="grid grid-cols-2 gap-4">
@@ -270,12 +325,30 @@
                 </div>
             </div>
             
-            <div class="p-4 border border-dashed border-gray-300 rounded-xl opacity-50 hover:opacity-100 transition-opacity">
-                <p class="text-xs font-bold text-gray-500 mb-2">🔧 Simulator (Untuk Demo)</p>
-                <button onclick="window.simulateStudentScan()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 rounded text-xs">Simulasi 1 Siswa Scan QR</button>
+            <!-- NEW: AGENDA GURU CARD -->
+            <div class="bg-white dark:bg-cyber-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="p-3 bg-orange-100 dark:bg-orange-900/30 border-b border-orange-200 dark:border-orange-800 flex justify-between items-center">
+                    <h3 class="font-bold text-orange-700 dark:text-orange-400 flex items-center gap-2">
+                        <span>📝</span> Agenda Guru
+                    </h3>
+                    <button onclick="window.openAgendaHistory()" class="text-xs font-bold text-orange-600 hover:text-orange-800 hover:underline">Lihat Riwayat</button>
+                </div>
+                <div class="p-4 space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Kegiatan Pembelajaran (Hari Ini)</label>
+                        <textarea id="agenda-activity" rows="4" class="w-full p-3 rounded-lg border border-gray-300 dark:bg-cyber-900 dark:border-gray-600 dark:text-white text-sm focus:ring-orange-500 focus:border-orange-500" placeholder="Contoh: Membahas materi Trigonometri Dasar..."></textarea>
+                    </div>
+                    <button onclick="window.saveAgenda()" id="btn-save-agenda" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg text-sm shadow transition-colors flex justify-center items-center gap-2">
+                        <span>Simpan Agenda</span>
+                    </button>
+                    <p id="agenda-status-msg" class="text-xs text-center text-gray-400 hidden">Tersimpan otomatis.</p>
+                </div>
             </div>
+
+            <!-- SIMULATOR TELAH DIHAPUS DARI SINI -->
         </div>
 
+        <!-- RIGHT COLUMN: ATTENDANCE LIST -->
         <div class="lg:col-span-2 bg-white dark:bg-cyber-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-[calc(100vh-8rem)]">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-cyber-900/50">
                 <h3 class="font-bold text-gray-800 dark:text-white">Daftar Jurnal Manual</h3>
@@ -319,6 +392,7 @@
         let currentClass = '';
         let currentDate = '';
         let currentReportData = null; 
+        let currentAgendaData = []; // NEW Global untuk simpan data agenda
         
         let currentScale = 1;
         let startX, startY, translateX=0, translateY=0;
@@ -369,7 +443,9 @@
 
             document.getElementById('date-picker').valueAsDate = new Date();
             const d = new Date();
-            document.getElementById('report-month').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}`;
+            const monthStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}`;
+            document.getElementById('report-month').value = monthStr;
+            document.getElementById('agenda-history-month').value = monthStr; // Default for agenda
 
             loadClasses();
 
@@ -456,12 +532,164 @@
         function setupRealtimeListener(kelas, tanggal) {
             if(currentUnsubscribe) currentUnsubscribe();
             const docRef = doc(db, 'presensi', `${kelas}_${tanggal}`);
+            
+            // Set Agenda Input to empty/loading state initially
+            document.getElementById('agenda-activity').value = "";
+
             currentUnsubscribe = onSnapshot(docRef, (docSnap) => {
                 const attendanceData = docSnap.exists() ? docSnap.data() : {};
                 renderTable(attendanceData);
                 updateSummary(attendanceData);
+                
+                // --- LOAD AGENDA KEGIATAN ---
+                // Jika ada data agenda di Firestore, tampilkan. Jika tidak, kosongkan.
+                const agendaText = attendanceData.agenda_kegiatan || "";
+                const agendaInput = document.getElementById('agenda-activity');
+                
+                // Hanya update jika input tidak sedang diketik (optional, tapi untuk realtime sederhana kita timpa saja agar sync)
+                // Atau, kita bisa cek apakah value berbeda agar kursor tidak lompat.
+                if (agendaInput.value !== agendaText && document.activeElement !== agendaInput) {
+                    agendaInput.value = agendaText;
+                }
             });
         }
+
+        // --- AGENDA FUNCTIONS ---
+        
+        window.saveAgenda = async () => {
+            if(!currentClass || !currentDate) return alert("Pilih Kelas dan Tanggal dulu!");
+            
+            const btn = document.getElementById('btn-save-agenda');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Menyimpan...`;
+
+            try {
+                const activity = document.getElementById('agenda-activity').value;
+                const docRef = doc(db, 'presensi', `${currentClass}_${currentDate}`);
+                
+                // Merge true agar tidak menghapus data absen yang sudah ada
+                await setDoc(docRef, { agenda_kegiatan: activity }, { merge: true });
+                
+                const msg = document.getElementById('agenda-status-msg');
+                msg.textContent = "Agenda berhasil disimpan!";
+                msg.classList.remove('hidden');
+                setTimeout(() => msg.classList.add('hidden'), 3000);
+
+            } catch (e) {
+                alert("Gagal simpan agenda: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        };
+
+        window.openAgendaHistory = () => {
+            document.getElementById('agenda-history-modal').classList.remove('hidden');
+            // Auto fetch current month if class is selected
+            if(currentClass) window.fetchAgendaHistory();
+        };
+
+        window.fetchAgendaHistory = async () => {
+            const monthVal = document.getElementById('agenda-history-month').value;
+            const kelas = currentClass; // Gunakan kelas yang sedang aktif, atau bisa tambah dropdown filter kelas di modal
+            const tbody = document.getElementById('agenda-history-body');
+
+            if(!kelas) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Harap pilih KELAS terlebih dahulu di menu utama.</td></tr>';
+                return;
+            }
+            if(!monthVal) return;
+
+            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center">Memuat riwayat agenda...</td></tr>';
+            currentAgendaData = []; // Reset global data
+
+            const [year, month] = monthVal.split('-');
+            const daysInMonth = new Date(year, month, 0).getDate();
+            
+            const promises = [];
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${monthVal}-${String(d).padStart(2, '0')}`;
+                const docId = `${kelas}_${dateStr}`;
+                // Fetch document
+                promises.push(getDoc(doc(db, 'presensi', docId)).then(snap => ({ 
+                    date: dateStr, 
+                    data: snap.exists() ? snap.data() : null 
+                })));
+            }
+
+            const results = await Promise.all(promises);
+            // Filter hanya yang punya agenda
+            const agendas = results.filter(r => r.data && r.data.agenda_kegiatan);
+            currentAgendaData = agendas; // Simpan ke global untuk export
+
+            tbody.innerHTML = '';
+            if (agendas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-400 italic">Tidak ada agenda tercatat untuk bulan ini.</td></tr>';
+                return;
+            }
+
+            agendas.forEach((item, idx) => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700";
+                row.innerHTML = `
+                    <td class="p-3 text-center text-gray-500 text-xs">${idx + 1}</td>
+                    <td class="p-3 text-center font-mono text-xs">${item.date}</td>
+                    <td class="p-3 text-sm text-gray-800 dark:text-gray-200">${item.data.agenda_kegiatan}</td>
+                    <td class="p-3 text-center text-xs font-bold text-gray-500">${kelas}</td>
+                    <td class="p-3 text-center">
+                        <button class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 transition font-bold" onclick="window.editAgenda('${item.date}')">Edit</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        };
+
+        // Fungsi baru untuk ekspor Excel (CSV)
+        window.exportAgendaExcel = () => {
+            if (!currentAgendaData || currentAgendaData.length === 0) {
+                alert("Tampilkan riwayat agenda terlebih dahulu!");
+                return;
+            }
+            
+            const monthVal = document.getElementById('agenda-history-month').value;
+            const kelas = currentClass;
+            
+            // Header CSV
+            let csv = "No,Tanggal,Kelas,Kegiatan/Agenda\n";
+            
+            // Body CSV
+            currentAgendaData.forEach((item, idx) => {
+                // Escape quotes in content
+                const safeActivity = (item.data.agenda_kegiatan || "").replace(/"/g, '""');
+                csv += `${idx + 1},"${item.date}","${kelas}","${safeActivity}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Agenda_Guru_${kelas}_${monthVal}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        window.editAgenda = (dateStr) => {
+            // Tutup modal
+            document.getElementById('agenda-history-modal').classList.add('hidden');
+            
+            // Set date picker ke tanggal tersebut dan trigger change agar data ter-load di form utama
+            const picker = document.getElementById('date-picker');
+            picker.value = dateStr;
+            picker.dispatchEvent(new Event('change'));
+            
+            // Scroll ke form agenda (optional, untuk UX lebih baik di mobile)
+            document.getElementById('agenda-activity').scrollIntoView({ behavior: 'smooth' });
+            
+            // Highlight form
+            setTimeout(() => document.getElementById('agenda-activity').focus(), 500);
+        };
 
         function renderTable(attendanceData) {
             const container = document.getElementById('attendance-list');
@@ -646,15 +874,7 @@
             await setDoc(docRef, batchData, { merge: true });
         };
 
-        window.simulateStudentScan = async () => {
-            if(studentsInClass.length === 0) return;
-            const randomStudent = studentsInClass[Math.floor(Math.random() * studentsInClass.length)];
-            const docRef = doc(db, 'presensi', `${currentClass}_${currentDate}`);
-            const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-            const updateData = {};
-            updateData[randomStudent.id] = { status: 'h', time: time, method: 'qr' };
-            await setDoc(docRef, updateData, { merge: true });
-        };
+        // window.simulateStudentScan DELETED
     </script>
 </body>
 
