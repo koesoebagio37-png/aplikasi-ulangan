@@ -333,11 +333,15 @@
                             <label class="cursor-pointer flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-emerald-400 hover:text-indigo-800 dark:hover:text-emerald-300 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                 Upload Gambar
-                                <input type="file" id="naskah-image-input" class="file-input hidden" accept="image/*">
+                                <input type="file" id="naskah-image-input" class="file-input hidden" accept="image/*,application/pdf">
                             </label>
                             <div class="h-4 w-px bg-gray-300 dark:bg-emerald-800"></div>
                             <button type="button" class="url-btn text-xs font-semibold text-gray-500 dark:text-emerald-500/70 hover:text-gray-700 dark:hover:text-emerald-300 transition-colors" title="Via URL" data-target="naskah">
                                 🔗 Via URL
+								<button id="btn-scan-ocr" type="button" class="flex items-center gap-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 px-2 py-1 rounded text-[10px] font-bold transition-colors border border-amber-200 dark:border-amber-700">
+									<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+									✨ Pindai Teks (AI)
+								</button>
                             </button>
                             
                             <div id="naskah-image-preview-container" class="editor-image-preview-container ml-auto hidden relative group">
@@ -738,6 +742,107 @@
             }
         };        
 		
+		// --- FITUR BARU: SMART SCAN (OCR + AUTO FILL OPTIONS) ---
+        window.scanQuestionAI = async () => {
+            let API_KEY = localStorage.getItem('gemini_api_key_soal');
+            const naskahImageBase64 = document.getElementById('naskah-image-base64').value;
+            const btnScan = document.getElementById('btn-scan-ocr');
+            
+            if (!naskahImageBase64) {
+                alert("Silakan upload gambar soal terlebih dahulu.");
+                return;
+            }
+
+            if (!API_KEY) {
+                const inputKey = prompt("Masukkan API Key untuk memindai:");
+                if (inputKey) { localStorage.setItem('gemini_api_key_soal', inputKey); API_KEY = inputKey; }
+                else return;
+            }
+
+            const originalText = btnScan.innerHTML;
+            btnScan.innerHTML = "⌛ Menganalisis & Mengisi...";
+            btnScan.disabled = true;
+
+            try {
+                const base64Data = naskahImageBase64.split(',')[1];
+                const mimeType = naskahImageBase64.split(';')[0].split(':')[1];
+
+                // Instruksi agar AI memberikan format JSON yang rapi
+                const promptOCR = `Analisis gambar soal ini. Identifikasi bagian naskah, tipe soal, dan opsi/pernyataannya.
+                Kembalikan data dalam format JSON murni dengan struktur: 
+                {
+                  "naskah": "teks soal saja",
+                  "tipe": "pg" atau "pgk" atau "bs" atau "esai-singkat",
+                  "opsi": ["opsi A", "opsi B", ...],
+                  "kunci": index_angka_atau_array_untuk_bs
+                }`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptOCR },
+                                { inlineData: { mimeType: mimeType, data: base64Data } }
+                            ]
+                        }],
+                        generationConfig: {
+                            responseMimeType: "application/json"
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || "Gagal memindai");
+
+                // Ambil hasil JSON dari AI
+                const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                
+                // 1. ISI NASKAH
+                document.getElementById('question-text-visual').innerHTML = result.naskah.replace(/\n/g, '<br>');
+                
+                // 2. SET TIPE SOAL
+                const typeSelector = document.getElementById('question-type');
+                typeSelector.value = result.tipe;
+                typeSelector.dispatchEvent(new Event('change'));
+
+                // 3. ISI OPSI SECARA OTOMATIS
+                setTimeout(() => {
+                    if (result.tipe === 'pg' && result.opsi) {
+                        const pgList = document.getElementById('options-pg-list');
+                        pgList.innerHTML = ''; // Bersihkan opsi lama
+                        result.opsi.forEach((o, idx) => {
+                            // Panggil fungsi internal aplikasi Anda untuk buat baris baru
+                            window.createPgOption(idx === 0, o, (result.kunci === idx));
+                        });
+                    } else if (result.tipe === 'bs' && result.opsi) {
+                        const bsList = document.getElementById('options-bs-list');
+                        bsList.innerHTML = '';
+                        result.opsi.forEach((o, idx) => {
+                            let keyVal = 'true';
+                            if (result.kunci && result.kunci[idx] !== undefined) keyVal = String(result.kunci[idx]);
+                            window.createBsStatement(o, keyVal);
+                        });
+                    }
+                    
+                    // Trigger Live Preview agar tampilan terupdate
+                    document.getElementById('question-text-visual').dispatchEvent(new Event('input', { bubbles: true }));
+                }, 500);
+
+                showNotification("Soal dan Opsi berhasil diisi otomatis oleh AI!");
+
+            } catch (error) {
+                console.error(error);
+                alert("Gagal memindai: " + error.message);
+            } finally {
+                btnScan.innerHTML = originalText;
+                btnScan.disabled = false;
+            }
+        };
+
+        // Pasang listener klik
+        document.getElementById('btn-scan-ocr').addEventListener('click', window.scanQuestionAI);
 		// --- Helper for Static Preview ---
         window.generateStaticPreview = (d) => {
             let html = `<div class="space-y-4">`;
@@ -1224,7 +1329,7 @@
                 }
             });
 
-            function createPgOption(isFirst = false, text = '', isCorrect = false, imageBase64 = '') {
+            window.createPgOption = (isFirst = false, text = '', isCorrect = false, imageBase64 = '') => {
                 const uniqueId = `opt-${Date.now()}-${Math.random()}`;
                 const div = document.createElement('div');
                 div.className = 'group flex items-start gap-3 bg-gray-50 dark:bg-cyber-900 p-3 rounded-xl border border-gray-100 dark:border-emerald-800 hover:border-indigo-300 dark:hover:border-emerald-500 transition-all';
@@ -1245,9 +1350,9 @@
                 const textarea = document.getElementById(`text-${uniqueId}`);
                 textarea.addEventListener('input', updateLivePreview);
                 textarea.addEventListener('paste', (e) => handleOptionPaste(e, uniqueId));
-            }
+            };
 
-            function createPgkOption(text = '', isCorrect = false, imageBase64 = '') {
+            window.createPgkOption = (text = '', isCorrect = false, imageBase64 = '') => {
                 const uniqueId = `opt-${Date.now()}-${Math.random()}`;
                 const div = document.createElement('div');
                 div.className = 'group flex items-start gap-3 bg-gray-50 dark:bg-cyber-900 p-3 rounded-xl border border-gray-100 dark:border-emerald-800 hover:border-indigo-300 dark:hover:border-emerald-500 transition-all';
@@ -1267,9 +1372,9 @@
                 const textarea = document.getElementById(`text-${uniqueId}`);
                 textarea.addEventListener('input', updateLivePreview);
                 textarea.addEventListener('paste', (e) => handleOptionPaste(e, uniqueId));
-            }
+            };
 
-            function createBsStatement(text = '', isCorrect = 'true', imageBase64 = '') {
+            window.createBsStatement = (text = '', isCorrect = 'true', imageBase64 = '') => {
                 const uniqueId = `opt-${Date.now()}-${Math.random()}`;
                 const div = document.createElement('div');
                 div.className = 'group flex items-start gap-3 bg-gray-50 dark:bg-cyber-900 p-3 rounded-xl border border-gray-100 dark:border-emerald-800 hover:border-indigo-300 dark:hover:border-emerald-500 transition-all';
@@ -1294,7 +1399,7 @@
                 const textarea = document.getElementById(`text-${uniqueId}`);
                 textarea.addEventListener('input', updateLivePreview);
                 textarea.addEventListener('paste', (e) => handleOptionPaste(e, uniqueId));
-            }
+            };
             
             function handleTypeChange() {
                 optionContainers.forEach(container => container.style.display = 'none');
