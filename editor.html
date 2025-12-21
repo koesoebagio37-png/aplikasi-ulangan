@@ -172,15 +172,18 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="bg-indigo-100 dark:bg-emerald-900/50 p-2 rounded-lg border border-indigo-200 dark:border-emerald-500 shadow-sm dark:shadow-glow-green transition-all duration-500">
-                    <svg class="w-6 h-6 text-indigo-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    <svg class="w-10 h-10 text-indigo-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-soft-text dark:text-emerald-50 leading-tight">
                         EDITOR <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 dark:from-emerald-400 dark:to-teal-300">SOAL</span>
                     </h1>
-                    <div class="flex items-center gap-2">
-                        <span class="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-widest border border-green-500/30 px-1 rounded">SECURE</span>
-                        <span class="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest border border-purple-500/30 px-1 rounded">AI READY</span>
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-widest border border-green-500/30 px-1 rounded">SECURE</span>
+                            <span class="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest border border-purple-500/30 px-1 rounded">AI READY</span>
+                        </div>
+                        <span class="text-[9px] font-bold text-gray-400 dark:text-emerald-500/40 tracking-[0.3em] mt-0.5 pl-0.5">Compiled by Koes</span>
                     </div>
                 </div>
             </div>
@@ -345,12 +348,26 @@
 
 							<!-- WRAPPER BARU UNTUK PINDAI (Mencegah Menumpuk) -->
 							<div class="flex items-center gap-1 bg-white dark:bg-cyber-800 p-0.5 rounded border border-gray-200 dark:border-emerald-700">
-								<select id="scan-mode" class="bg-transparent text-[9px] font-bold text-amber-600 outline-none px-1 border-r border-gray-100 dark:border-emerald-900">
+								<!-- Pilihan Mode -->
+								<select id="scan-mode" class="bg-transparent text-[9px] font-bold text-amber-600 outline-none px-1 border-r border-gray-100 dark:border-emerald-900 cursor-pointer">
 									<option value="soal_saja">Hanya Soal</option>
 									<option value="dengan_kunci" selected>+ Kunci</option>
 								</select>
+
+								<!-- Tombol Pindai -->
 								<button id="btn-scan-ocr" type="button" class="text-[9px] font-bold text-amber-700 dark:text-amber-400 px-2 py-1 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors">
 									✨ PINDAI AI
+								</button>
+
+								<!-- Garis Pembatas Kecil -->
+								<div class="h-3 w-px bg-gray-200 dark:bg-emerald-900 mx-0.5"></div>
+
+								<!-- Tombol Ganti Key (Baru) -->
+								<button onclick="if(confirm('Hapus kunci AI yang tersimpan? Anda akan diminta memasukkan kunci baru saat klik Pindai/AI.')){localStorage.removeItem('gemini_api_key_soal');}" 
+										type="button" 
+										class="text-[9px] font-bold text-gray-400 hover:text-red-500 px-1.5 py-1 transition-colors" 
+										title="Klik jika ingin ganti akun atau kunci error">
+									🔄 Ganti Key
 								</button>
 							</div>
 
