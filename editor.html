@@ -1857,26 +1857,165 @@ if (scanBtn) {
             addPgOptionBtn.addEventListener('click', () => createPgOption(pgList.children.length === 0));
             addPgkOptionBtn.addEventListener('click', () => createPgkOption());
             addBsStatementBtn.addEventListener('click', () => createBsStatement());
-            editorVisual.addEventListener('paste', async (e) => { 
+			editorVisual.addEventListener('paste', async (e) => {
+                // 1. PRIORITAS UTAMA: CEK APAKAH YANG DITEMPEL ADALAH GAMBAR
                 const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                let hasImage = false;
+
                 for (const item of items) {
                     if (item.kind === 'file' && item.type.startsWith('image/')) {
-                        e.preventDefault(); 
-                        showNotification("Mendeteksi gambar dari clipboard...", false);
+                        e.preventDefault();
+                        hasImage = true;
                         const blob = item.getAsFile();
                         const reader = new FileReader();
+                        
+                        showNotification("Mendeteksi gambar dari clipboard...", false);
+                        
                         reader.onload = async (event) => {
-                            const compressed = await compressImage(event.target.result);
-                            loadImageInput('naskah', compressed);
-                            updateLivePreview();
-                            showNotification('Gambar ditempel & dikompresi!');
+                            // Gunakan fungsi kompresi jika tersedia, jika tidak langsung load
+                            const imageData = typeof compressImage === 'function' ? 
+                                await compressImage(event.target.result) : event.target.result;
+                                
+                            if (typeof loadImageInput === 'function') {
+                                loadImageInput('naskah', imageData);
+                                updateLivePreview();
+                                showNotification('Gambar berhasil ditempel!');
+                            }
                         };
                         reader.readAsDataURL(blob);
                         break; 
                     }
                 }
-            });
 
+                // Jika sudah memproses gambar, jangan lanjut ke logika teks
+                if (hasImage) return;
+
+                // 2. LOGIKA TEKS (JIKA BUKAN GAMBAR)
+                const text = e.clipboardData.getData('text/plain');
+                if (!text || text.length < 5) return;
+
+                // Regex deteksi soal PG (Mencari pola naskah diikuti A. / B.)
+                const pgPattern = /\b[A-E][\.\)]\s+/i;
+
+                if (pgPattern.test(text)) {
+                    // --- SKENARIO 1: SMART PASTE (OPSI SUDAH ADA) ---
+                    const firstOptionIdx = text.search(/\b[A-E][\.\)]/i);
+                    if (firstOptionIdx > 3) {
+                        e.preventDefault();
+                        
+                        let qText = text.substring(0, firstOptionIdx).trim();
+                        qText = qText.replace(/^\s*\d+[\.\)\s-]+\s*/, '');
+
+                        const optPart = text.substring(firstOptionIdx);
+                        const optionsMatch = optPart.match(/[A-E][\.\)]\s+[\s\S]+?(?=\s+\b[A-E][\.\)]|$)/gi);
+                        
+                        if (optionsMatch && optionsMatch.length >= 2) {
+                            let foundKunci = null;
+                            const cleanOptions = optionsMatch.map((optRaw, idx) => {
+                                let content = optRaw.trim();
+                                if (content.endsWith('*')) {
+                                    foundKunci = idx;
+                                    content = content.slice(0, -1).trim();
+                                }
+                                return content.replace(/^[A-E][\.\)]\s+/i, '').trim();
+                            });
+
+                            editorVisual.innerHTML = qText.replace(/\n/g, '<br>');
+                            questionType.value = 'pg';
+                            if(typeof handleTypeChange === 'function') handleTypeChange();
+                            
+                            const pgList = document.getElementById('options-pg-list');
+                            pgList.innerHTML = '';
+                            cleanOptions.forEach((txt, i) => {
+                                window.createPgOption(false, txt, (foundKunci === i));
+                            });
+
+                            updateLivePreview();
+                            showNotification("Berhasil memindahkan soal & opsi.");
+
+                            // Trigger AI hanya untuk Level Kognitif
+                            const API_KEY = localStorage.getItem('gemini_api_key_soal');
+                            if (API_KEY) {
+                                (async () => {
+                                    try {
+                                        const promptLevel = `Analisis soal berikut dan tentukan level kognitifnya saja (C1-C6). Balas HANYA kode levelnya. Soal: "${qText}"`;
+                                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`, {
+                                            method: "POST", headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ contents: [{ parts: [{ text: promptLevel }] }] })
+                                        });
+                                        const data = await response.json();
+                                        const aiLevel = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                                        if (aiLevel && aiLevel.match(/^C[1-6]$/)) document.getElementById('meta-kesulitan').value = aiLevel;
+                                    } catch (err) { console.error(err); }
+                                })();
+                            }
+                        }
+                    }
+                } else if (text.length > 10) {
+                    // --- SKENARIO 2: GENERATE OPSI & KUNCI (NASKAH SAJA) ---
+                    const API_KEY = localStorage.getItem('gemini_api_key_soal');
+                    if (!API_KEY) return; 
+
+                    e.preventDefault();
+                    if (confirm("Naskah soal tanpa opsi terdeteksi. Ingin AI membuatkan opsi jawaban dan kuncinya secara otomatis?")) {
+                        const type = questionType.value;
+                        const loadingMsg = "✨ AI sedang membuatkan opsi & kunci...";
+                        showNotification(loadingMsg);
+                        
+                        try {
+                            const promptAI = `Peran: Guru Ahli. Tugas: Buat opsi jawaban dan tentukan kunci yang akurat untuk soal ini.
+                            Tipe Soal: ${type.toUpperCase()}
+                            Naskah: "${text}"
+                            
+                            Ketentuan:
+                            - Jika PG: Buat 5 opsi (A-E), tentukan 1 kunci (index 0-4).
+                            - Jika PGK: Buat 5 opsi, tentukan minimal 2 kunci benar (array index).
+                            - Jika BS: Buat 3-4 pernyataan terkait soal, tentukan kunci (array "true" atau "false").
+                            - Gunakan format LaTeX $...$ untuk rumus.
+                            - Tentukan Level Kognitif (C1-C6).
+                            
+                            Kembalikan format JSON murni:
+                            {"naskah": "...", "opsi": ["...", "..."], "kunci": ..., "level": "C..."}`;
+
+                            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`, {
+                                method: "POST", headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ 
+                                    contents: [{ parts: [{ text: promptAI }] }],
+                                    generationConfig: { responseMimeType: "application/json" }
+                                })
+                            });
+
+                            const resJson = await response.json();
+                            const aiData = JSON.parse(resJson.candidates[0].content.parts[0].text);
+
+                            editorVisual.innerHTML = aiData.naskah.replace(/\n/g, '<br>');
+                            document.getElementById('meta-kesulitan').value = aiData.level;
+                            if(typeof handleTypeChange === 'function') handleTypeChange();
+
+                            const lists = { pg: 'options-pg-list', pgk: 'options-pgk-list', bs: 'options-bs-list' };
+                            const listEl = document.getElementById(lists[type]);
+                            if(listEl) listEl.innerHTML = '';
+
+                            aiData.opsi.forEach((o, idx) => {
+                                if (type === 'pg') window.createPgOption(false, o, (aiData.kunci === idx));
+                                else if (type === 'pgk') window.createPgkOption(o, aiData.kunci.includes(idx));
+                                else if (type === 'bs') window.createBsStatement(o, String(aiData.kunci[idx]));
+                            });
+
+                            updateLivePreview();
+                            if(window.MathJax) window.MathJax.typesetPromise();
+                            showNotification("Opsi dan kunci berhasil dibuat oleh AI!");
+
+                        } catch (err) {
+                            console.error(err);
+                            showNotification("Gagal memproses AI. Menempel teks secara standar.", true);
+                            editorVisual.innerHTML = text.replace(/\n/g, '<br>');
+                        }
+                    } else {
+                        editorVisual.innerHTML = text.replace(/\n/g, '<br>');
+                    }
+                }
+            });
 			// Agar paste di editor bawah juga mentrigger upload gambar
 			editorBottom.addEventListener('paste', async (e) => {
 				// Gunakan logika yang sama persis dengan editorVisual
@@ -1933,15 +2072,40 @@ if (scanBtn) {
                 if (!soalDataFull) return;
                 
                 const { publicData, kunci } = soalDataFull;
-                
-                // SIMPAN STATUS EDIT SEBELUM DI-CLEAR
                 const wasEditing = currentEditingSoalId !== null;
 
                 saveBankSoalBtn.disabled = true; 
-                const originalText = saveBankSoalBtn.textContent; 
-                saveBankSoalBtn.textContent = 'Menyimpan Aman...';
+                const originalText = saveBankSoalBtn.innerHTML; 
+                saveBankSoalBtn.textContent = 'Memeriksa Duplikat...';
                 
                 try {
+                    // --- LOGIKA CEK DUPLIKAT (NASKAH + JENIS) ---
+                    // Mengikuti RULE 2: Ambil semua data lalu filter di JavaScript
+                    const snapshot = await getDocs(query(bankSoalCollectionRef));
+                    const isDuplicate = snapshot.docs.some(docSnap => {
+                        const existingData = docSnap.data();
+                        const sameNaskah = existingData.naskah === publicData.naskah;
+                        const sameType = existingData.type === publicData.type;
+                        
+                        // Jika bukan mode edit, cek semua. 
+                        // Jika mode edit, abaikan pengecekan terhadap dokumen yang sedang diedit itu sendiri.
+                        if (wasEditing) {
+                            return sameNaskah && sameType && docSnap.id !== currentEditingSoalId;
+                        } else {
+                            return sameNaskah && sameType;
+                        }
+                    });
+
+                    if (isDuplicate) {
+                        showNotification('GAGAL: Soal dengan naskah dan jenis ini sudah ada!', true);
+                        saveBankSoalBtn.disabled = false;
+                        saveBankSoalBtn.innerHTML = originalText;
+                        return; // Batalkan proses simpan
+                    }
+                    // --- AKHIR LOGIKA CEK DUPLIKAT ---
+
+                    saveBankSoalBtn.textContent = 'Menyimpan Aman...';
+
                     await runTransaction(db, async (transaction) => {
                         let soalRef;
                         let privatRef;
@@ -1954,10 +2118,7 @@ if (scanBtn) {
                             privatRef = doc(db, "bank_soal_privat", soalRef.id);
                         }
                         
-                        // Simpan Data Publik
                         transaction.set(soalRef, publicData);
-
-                        // Simpan Data Privat
                         transaction.set(privatRef, {
                             kunci: kunci,
                             tipe: publicData.type,
@@ -1965,15 +2126,12 @@ if (scanBtn) {
                         });
                     });
                     
-                    showNotification('Soal tersimpan aman (Split Database)!'); 
-                    
-                    clearEditor(); // Reset form
+                    showNotification('Soal tersimpan aman!'); 
+                    clearEditor();
                     loadExistingMetadataOptions(); 
                     
-                    // JIKA TADINYA EDIT, KEMBALI KE MODAL
                     if (wasEditing) {
                         showModal(); 
-                        // Opsional: Klik tombol cari otomatis agar list terupdate
                         if(searchFirebaseBtn) searchFirebaseBtn.click();
                     }
 
