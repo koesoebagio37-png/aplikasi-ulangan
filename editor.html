@@ -286,9 +286,16 @@
                                 <option value="Times New Roman">Times New Roman</option>
                                 <option value="Courier New">Courier New</option>
                             </select>
-                            <select class="tool-select" onchange="execCmd('fontSize', this.value)">
-                                <option value="3">12pt</option><option value="1">8pt</option><option value="4">14pt</option><option value="5">18pt</option>
-                            </select>
+                            <select class="tool-select outline-none" onchange="setFontSize(this.value)">
+								<option value="8pt">8pt</option>
+								<option value="9pt">9pt</option>
+								<option value="10pt">10pt</option>
+								<option value="11pt">11pt</option>
+								<option value="12pt" selected>12pt</option>
+								<option value="14pt">14pt</option>
+								<option value="18pt">18pt</option>
+								<option value="24pt">24pt</option>
+							</select>
                             <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-1"></div>
                             <button class="tool-btn font-bold" onclick="execCmd('bold')" title="Bold">B</button>
                             <button class="tool-btn italic" onclick="execCmd('italic')" title="Italic">I</button>
@@ -614,7 +621,28 @@
             const event = new Event('input', { bubbles: true });
             visualEditor.dispatchEvent(event);
         };
-
+		window.setFontSize = (size) => {
+            // Gunakan execCommand untuk membuat tag font sementara
+            document.execCommand("fontSize", false, "7");
+            
+            // Cari tag font yang baru dibuat (dengan size="7") dan ubah menjadi span dengan style fontSize
+            const fontElements = document.querySelectorAll("font[size='7']");
+            fontElements.forEach(el => {
+                el.removeAttribute("size");
+                el.style.fontSize = size;
+                // Ubah tag font menjadi span agar lebih modern (opsional tapi disarankan)
+                const span = document.createElement('span');
+                span.style.fontSize = size;
+                span.innerHTML = el.innerHTML;
+                el.parentNode.replaceChild(span, el);
+            });
+            
+            // Fokus kembali ke editor dan trigger live preview
+            const visualEditor = document.getElementById('question-text-visual');
+            visualEditor.focus();
+            const event = new Event('input', { bubbles: true });
+            visualEditor.dispatchEvent(event);
+        };
 		
 
 // --- AI GENERATION LOGIC (IMPROVED: READS 2 BLOCKS, IMAGE & SMART API KEY) ---
@@ -2067,81 +2095,96 @@ if (scanBtn) {
                     reader.readAsDataURL(file);
                 }
             });
+			const normalizeText = (html) => {
+            if (!html) return '';
+            return html
+                .replace(/<[^>]*>?/gm, '')         // Hapus semua tag HTML (<div>, <p>, dll)
+                .replace(/&nbsp;/g, ' ')           // Ubah spasi khusus HTML menjadi spasi biasa
+                .replace(/\s+/g, ' ')              // Gabungkan spasi/baris baru yang berlebih
+                .trim()                            // Hapus spasi di ujung awal dan akhir
+                .toLowerCase();                    // Bandingkan dalam huruf kecil (Case Insensitive)
+			};
             saveBankSoalBtn.addEventListener('click', async () => {
-                const soalDataFull = collectSoalData(); 
-                if (!soalDataFull) return;
+            const soalDataFull = collectSoalData(); 
+            if (!soalDataFull) return;
+            
+            const { publicData, kunci } = soalDataFull;
+            const wasEditing = currentEditingSoalId !== null;
+
+            saveBankSoalBtn.disabled = true; 
+            const originalText = saveBankSoalBtn.innerHTML; 
+            saveBankSoalBtn.textContent = 'Memeriksa Duplikat...';
+            
+            try {
+                // Normalisasi naskah baru yang akan disimpan
+                const normalizedNewNaskah = normalizeText(publicData.naskah);
+
+                // Ambil semua data soal (Rule 2: Filter di memori JavaScript)
+                const snapshot = await getDocs(query(bankSoalCollectionRef));
                 
-                const { publicData, kunci } = soalDataFull;
-                const wasEditing = currentEditingSoalId !== null;
-
-                saveBankSoalBtn.disabled = true; 
-                const originalText = saveBankSoalBtn.innerHTML; 
-                saveBankSoalBtn.textContent = 'Memeriksa Duplikat...';
-                
-                try {
-                    // --- LOGIKA CEK DUPLIKAT (NASKAH + JENIS) ---
-                    // Mengikuti RULE 2: Ambil semua data lalu filter di JavaScript
-                    const snapshot = await getDocs(query(bankSoalCollectionRef));
-                    const isDuplicate = snapshot.docs.some(docSnap => {
-                        const existingData = docSnap.data();
-                        const sameNaskah = existingData.naskah === publicData.naskah;
-                        const sameType = existingData.type === publicData.type;
-                        
-                        // Jika bukan mode edit, cek semua. 
-                        // Jika mode edit, abaikan pengecekan terhadap dokumen yang sedang diedit itu sendiri.
-                        if (wasEditing) {
-                            return sameNaskah && sameType && docSnap.id !== currentEditingSoalId;
-                        } else {
-                            return sameNaskah && sameType;
-                        }
-                    });
-
-                    if (isDuplicate) {
-                        showNotification('GAGAL: Soal dengan naskah dan jenis ini sudah ada!', true);
-                        saveBankSoalBtn.disabled = false;
-                        saveBankSoalBtn.innerHTML = originalText;
-                        return; // Batalkan proses simpan
-                    }
-                    // --- AKHIR LOGIKA CEK DUPLIKAT ---
-
-                    saveBankSoalBtn.textContent = 'Menyimpan Aman...';
-
-                    await runTransaction(db, async (transaction) => {
-                        let soalRef;
-                        let privatRef;
-
-                        if (currentEditingSoalId) { 
-                            soalRef = doc(bankSoalCollectionRef, currentEditingSoalId);
-                            privatRef = doc(db, 'bank_soal_privat', currentEditingSoalId);
-                        } else { 
-                            soalRef = doc(collection(db, "bank_soal"));
-                            privatRef = doc(db, "bank_soal_privat", soalRef.id);
-                        }
-                        
-                        transaction.set(soalRef, publicData);
-                        transaction.set(privatRef, {
-                            kunci: kunci,
-                            tipe: publicData.type,
-                            updated: new Date().toISOString()
-                        });
-                    });
+                const isDuplicate = snapshot.docs.some(docSnap => {
+                    const existingData = docSnap.data();
                     
-                    showNotification('Soal tersimpan aman!'); 
-                    clearEditor();
-                    loadExistingMetadataOptions(); 
+                    // Normalisasi naskah yang sudah ada di database
+                    const normalizedExistingNaskah = normalizeText(existingData.naskah);
+                    
+                    // Bandingkan naskah bersih DAN jenis soal
+                    const sameNaskah = (normalizedExistingNaskah === normalizedNewNaskah);
+                    const sameType = (existingData.type === publicData.type);
                     
                     if (wasEditing) {
-                        showModal(); 
-                        if(searchFirebaseBtn) searchFirebaseBtn.click();
+                        // Jika sedang mengedit, abaikan pengecekan terhadap dirinya sendiri
+                        return sameNaskah && sameType && docSnap.id !== currentEditingSoalId;
+                    } else {
+                        return sameNaskah && sameType;
                     }
+                });
 
-                } catch (error) { 
-                    showNotification(`Gagal simpan: ${error.message}`, true); 
-                } finally { 
-                    saveBankSoalBtn.disabled = false; 
-                    saveBankSoalBtn.innerHTML = originalText; 
+                if (isDuplicate) {
+                    showNotification('GAGAL: Soal dengan isi teks dan tipe yang sama sudah ada di Bank Soal!', true);
+                    saveBankSoalBtn.disabled = false;
+                    saveBankSoalBtn.innerHTML = originalText;
+                    return; // Hentikan proses simpan
                 }
-            });
+
+                saveBankSoalBtn.textContent = 'Menyimpan...';
+
+                await runTransaction(db, async (transaction) => {
+                    let soalRef;
+                    let privatRef;
+
+                    if (currentEditingSoalId) { 
+                        soalRef = doc(bankSoalCollectionRef, currentEditingSoalId);
+                        privatRef = doc(db, 'bank_soal_privat', currentEditingSoalId);
+                    } else { 
+                        soalRef = doc(collection(db, "bank_soal"));
+                        privatRef = doc(db, "bank_soal_privat", soalRef.id);
+                    }
+                    
+                    transaction.set(soalRef, publicData);
+                    transaction.set(privatRef, {
+                        kunci: kunci,
+                        tipe: publicData.type,
+                        updated: new Date().toISOString()
+                    });
+                });
+                
+                showNotification('Soal berhasil disimpan!'); 
+                clearEditor();
+                loadExistingMetadataOptions(); 
+                
+                if (wasEditing) {
+                    showModal(); 
+                    if(typeof searchFirebaseBtn !== 'undefined') searchFirebaseBtn.click();
+                }
+
+            } catch (error) { 
+                showNotification(`Gagal simpan: ${error.message}`, true); 
+            } finally { 
+                saveBankSoalBtn.disabled = false; 
+                saveBankSoalBtn.innerHTML = originalText; 
+            }
+			});
             clearEditorBtn.addEventListener('click', () => {
                 // SIMPAN STATUS DULU SEBELUM CLEAR
                 const wasEditing = currentEditingSoalId !== null;
