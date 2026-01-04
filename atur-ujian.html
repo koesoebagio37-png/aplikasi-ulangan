@@ -779,69 +779,148 @@
                 localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
             });
 
-            // --- IMPOR SOAL LOGIC ---
-            document.getElementById('impor-bank-soal-btn').addEventListener('click', async () => {
-                document.getElementById('impor-soal-modal').classList.remove('hidden');
-                
-                // RESET: Bersihkan hasil sebelumnya dan tampilkan instruksi
-                document.getElementById('filter-results-container').innerHTML = '<div class="text-center text-gray-400 py-10">Silakan tekan tombol Cari untuk menampilkan soal.</div>';
-                
-                // Populate Filters (Only load options, don't search yet)
-                const q = query(bankSoalCollectionRef);
-                getDocs(q).then(snap => {
-                    const sets = { mapel: new Set(), kelas: new Set(), kesulitan: new Set(), bab: new Set(), subbab: new Set() };
-                    
-                    // Reset Map
-                    babSubBabMap = {};
+// --- VARIABEL GLOBAL & HELPER FILTER CERDAS (FIXED) ---
+            let cachedBankSoal = []; 
 
+            // Helper: Sort Kelas Romawi (VII, VIII, IX, X...)
+            const sortKelasRomawi = (a, b) => {
+                const romans = { 'SD':0, '1':1, '2':2, '3':3, '4':4, '5':5, '6':6, 'VII':7, 'VIII':8, 'IX':9, 'X':10, 'XI':11, 'XII':12, 'UMUM':99 };
+                const valA = romans[a.replace(/Kelas/i, '').trim().toUpperCase()] || 99;
+                const valB = romans[b.replace(/Kelas/i, '').trim().toUpperCase()] || 99;
+                return valA - valB;
+            };
+
+            // Helper: Ambil Subbab dengan aman (handle subbab/subBab/SubBab)
+            const getSubBab = (meta) => meta?.subbab || meta?.subBab || meta?.SubBab;
+
+            // --- LOGIKA UPDATE DROPDOWN (CASCADING) ---
+            function updateSmartFilters(triggerSource) {
+                const fMapel = document.getElementById('filter-mapel');
+                const fKelas = document.getElementById('filter-kelas');
+                const fBab = document.getElementById('filter-bab');
+                const fSub = document.getElementById('filter-subbab');
+                
+                // Ambil nilai saat ini
+                const selMapel = fMapel.value;
+                const selKelas = fKelas.value;
+                const selBab = fBab.value;
+                const selSub = fSub.value;
+
+                // 1. Filter Data di Memori (Bertingkat)
+                
+                // Level 1: Mapel (Master)
+                const mapelSet = new Set(cachedBankSoal.map(d => d.metadata?.mapel).filter(Boolean));
+                
+                // Level 2: Kelas (Harus sesuai Mapel)
+                const validForKelas = cachedBankSoal.filter(d => !selMapel || d.metadata?.mapel === selMapel);
+                const kelasSet = new Set(validForKelas.map(d => d.metadata?.kelas).filter(Boolean));
+
+                // Level 3: BAB (Harus sesuai Mapel & Kelas)
+                const validForBab = validForKelas.filter(d => !selKelas || d.metadata?.kelas === selKelas);
+                const babSet = new Set(validForBab.map(d => d.metadata?.bab).filter(Boolean));
+
+                // Level 4: Sub BAB (Harus sesuai Mapel & Kelas & BAB)
+                // Logika: Jika BAB dipilih, filter ketat. Jika BAB belum, tampilkan semua Sub di kelas tsb.
+                const validForSub = validForBab.filter(d => !selBab || d.metadata?.bab === selBab);
+                const subSet = new Set(validForSub.map(d => getSubBab(d.metadata)).filter(Boolean));
+
+                // 2. Fungsi Render Dropdown
+                const renderOpts = (el, set, currentVal, sorter = null) => {
+                    let items = Array.from(set);
+                    if(sorter) items.sort(sorter); else items.sort();
+
+                    const isStillValid = items.includes(currentVal);
+                    
+                    // Reset isi dropdown
+                    const defaultText = el.options[0] ? el.options[0].text.replace(/-- | --/g, '') : "Pilih";
+                    el.innerHTML = `<option value="">${defaultText}</option>`; 
+                    
+                    items.forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = v;
+                        opt.textContent = v;
+                        el.appendChild(opt);
+                    });
+
+                    // Restore nilai
+                    if (isStillValid) el.value = currentVal;
+                    else el.value = "";
+                };
+
+                // 3. Eksekusi Render
+                // Mapel dirender hanya saat inisialisasi
+                if (triggerSource === 'init') renderOpts(fMapel, mapelSet, selMapel);
+
+                // Kelas dirender ulang jika Mapel berubah
+                if (triggerSource === 'mapel' || triggerSource === 'init') renderOpts(fKelas, kelasSet, selKelas, sortKelasRomawi);
+                
+                // BAB dirender ulang jika Mapel/Kelas berubah
+                if (triggerSource === 'mapel' || triggerSource === 'kelas' || triggerSource === 'init') renderOpts(fBab, babSet, selBab);
+
+                // Subbab SELALU dirender ulang jika apapun berubah (karena dia posisi terbawah)
+                renderOpts(fSub, subSet, selSub);
+            }
+
+            // --- EVENT LISTENER TOMBOL BUKA MODAL ---
+            document.getElementById('impor-bank-soal-btn').addEventListener('click', async () => {
+                const modal = document.getElementById('impor-soal-modal');
+                modal.classList.remove('hidden');
+                
+                document.getElementById('filter-results-container').innerHTML = '<div class="text-center text-gray-400 py-10">Memuat database cerdas...</div>';
+                
+                try {
+                    // Fetch Data Sekali Saja
+                    const q = query(bankSoalCollectionRef);
+                    const snap = await getDocs(q);
+                    
+                    cachedBankSoal = [];
                     snap.forEach(d => {
-                        const m = d.data().metadata || {};
-                        if(m.mapel) sets.mapel.add(m.mapel);
-                        if(m.kelas) sets.kelas.add(m.kelas);
-                        if(m.kesulitan) sets.kesulitan.add(m.kesulitan); // Added Level
-                        if(m.bab) {
-                            sets.bab.add(m.bab);
-                            // Populate BAB -> SubBAB Map
-                            if (!babSubBabMap[m.bab]) babSubBabMap[m.bab] = new Set();
-                            if (m.subbab) babSubBabMap[m.bab].add(m.subbab);
-                        }
+                        const data = d.data();
+                        data.firebaseId = d.id;
+                        cachedBankSoal.push(data);
+                    });
+
+                    // Init Dropdown Statis
+                    const typeSel = document.getElementById('filter-tipe');
+                    const levelSel = document.getElementById('filter-kesulitan');
+                    typeSel.innerHTML = '<option value="">Semua Tipe</option>';
+                    ['pg','pgk','bs','esai-singkat','esai-kompleks'].forEach(t => typeSel.add(new Option(t.toUpperCase(), t)));
+                    levelSel.innerHTML = '<option value="">Semua Level</option>';
+                    ['C1','C2','C3','C4','C5','C6'].forEach(l => levelSel.add(new Option(l, l)));
+
+                    // Init Smart Filters (Reset Total)
+                    ['filter-mapel', 'filter-kelas', 'filter-bab', 'filter-subbab'].forEach(id => {
+                        const el = document.getElementById(id);
+                        el.value = "";
                     });
                     
-                    const fill = (id, set) => {
-                        const el = document.getElementById(id);
-                        const curr = el.value;
-                        el.innerHTML = `<option value="">${el.options[0].text}</option>`;
-                        set.forEach(v => el.add(new Option(v, v)));
-                        el.value = curr;
-                    };
-                    fill('filter-mapel', sets.mapel);
-                    fill('filter-kelas', sets.kelas);
-                    fill('filter-kesulitan', sets.kesulitan); // Fill Level
-                    fill('filter-bab', sets.bab);
-                    // Subbab will be filled on change
-                });
-                
-                // Hardcode Tipe
-                const typeSel = document.getElementById('filter-tipe');
-                if (typeSel.options.length <= 1) { // Prevent duplication
-                    ['pg','pgk','bs','esai-singkat','esai-kompleks'].forEach(t => typeSel.add(new Option(t.toUpperCase(), t)));
+                    updateSmartFilters('init'); 
+                    document.getElementById('filter-results-container').innerHTML = '<div class="text-center text-gray-400 py-10">Silakan pilih filter untuk mencari soal.</div>';
+
+                } catch (e) {
+                    alert('Gagal memuat: ' + e.message);
                 }
             });
+
+            // --- EVENT LISTENER PERUBAHAN FILTER (FIXED) ---
+            // Hapus listener lama dengan cara menimpa element baru (Clone) atau pastikan tidak double
+            // Kita pasang listener spesifik dengan Arrow Function agar parameter terkirim benar
             
-            // --- BAB Change Listener for SubBAB Filtering ---
-            document.getElementById('filter-bab').addEventListener('change', (e) => {
-                const selectedBab = e.target.value;
-                const subbabSelect = document.getElementById('filter-subbab');
-                
-                // Reset SubBAB
-                subbabSelect.innerHTML = '<option value="">Semua Sub</option>';
-                
-                if (selectedBab && babSubBabMap[selectedBab]) {
-                    babSubBabMap[selectedBab].forEach(sub => {
-                        subbabSelect.add(new Option(sub, sub));
-                    });
-                }
-            });
+            const fMapel = document.getElementById('filter-mapel');
+            const fKelas = document.getElementById('filter-kelas');
+            const fBab = document.getElementById('filter-bab');
+
+            // Hapus listener lama jika ada (Clean Start)
+            const newMapel = fMapel.cloneNode(true); fMapel.parentNode.replaceChild(newMapel, fMapel);
+            const newKelas = fKelas.cloneNode(true); fKelas.parentNode.replaceChild(newKelas, fKelas);
+            const newBab = fBab.cloneNode(true); fBab.parentNode.replaceChild(newBab, fBab);
+
+            // Pasang Listener Baru yang Benar
+            newMapel.addEventListener('change', () => updateSmartFilters('mapel'));
+            newKelas.addEventListener('change', () => updateSmartFilters('kelas'));
+            newBab.addEventListener('change', () => updateSmartFilters('bab'));
+            
+            // Note: Filter Subbab tidak perlu trigger update ke bawahnya karena dia paling bawah.
 
             document.getElementById('close-impor-modal-btn').addEventListener('click', () => document.getElementById('impor-soal-modal').classList.add('hidden'));
             document.getElementById('search-firebase-btn').addEventListener('click', performSearch);
