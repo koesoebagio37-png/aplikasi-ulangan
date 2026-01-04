@@ -912,9 +912,9 @@
                                     <span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-[10px] border border-gray-200 dark:border-gray-600">
                                         ${s.metadata?.bab || 'Bab?'}
                                     </span>
-                                    <span class="px-2 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 text-[10px] border border-teal-100 dark:border-teal-800">
-                                        ${s.metadata?.subbab || 'Sub?'}
-                                    </span>
+                                    
+                                    <!-- INDIKATOR GROUP ID (BARU) -->
+                                    ${s.metadata?.groupId ? `<span class="px-2 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 text-[10px] font-bold border border-purple-200 dark:border-purple-800 flex items-center gap-1" title="Soal Berkelompok"><span class="text-sm">🔗</span> ${s.metadata.groupId}</span>` : ''}
                                 </div>
                             </div>
                             <button class="preview-btn p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded border border-indigo-100" title="Preview">
