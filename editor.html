@@ -266,6 +266,15 @@
                             <datalist id="subbab-list"></datalist>
                         </div>
                     </div>
+					
+				    <!-- NEW FIELD: GROUP ID (CLUSTERING) -->
+                    <div class="mt-4 pt-3 border-t border-gray-100 dark:border-emerald-900/50">
+                        <label class="text-xs font-bold text-indigo-600 dark:text-indigo-400">ID Kelompok / Bacaan (Opsional)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="meta-group-id" class="flex-1 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2 text-sm font-mono placeholder-indigo-300 dark:placeholder-indigo-700 outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Contoh: WACANA-01">
+                            <span class="text-[10px] text-gray-400 max-w-xs leading-tight">Soal dengan ID sama akan muncul berurutan (tidak diacak).</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Grid: Editor & Preview -->
@@ -536,9 +545,7 @@
                     <div class="px-4 py-5 sm:p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                         <!-- Filters -->
 						<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-							<!-- TAMBAHAN: Filter Mapel -->
 							<select id="filter-mapel" class="filter-select bg-white dark:bg-cyber-900 border border-gray-200 dark:border-emerald-800 text-gray-700 dark:text-emerald-100 text-xs rounded-lg block w-full p-2.5 outline-none"><option value="">Semua Mapel</option></select>
-
 							<select id="filter-tipe" class="filter-select bg-white dark:bg-cyber-900 border border-gray-200 dark:border-emerald-800 text-gray-700 dark:text-emerald-100 text-xs rounded-lg block w-full p-2.5 outline-none"><option value="">Semua Tipe</option></select>
 							<select id="filter-kelas" class="filter-select bg-white dark:bg-cyber-900 border border-gray-200 dark:border-emerald-800 text-gray-700 dark:text-emerald-100 text-xs rounded-lg block w-full p-2.5 outline-none"><option value="">Semua Kelas</option></select>
 							<select id="filter-kesulitan" class="filter-select bg-white dark:bg-cyber-900 border border-gray-200 dark:border-emerald-800 text-gray-700 dark:text-emerald-100 text-xs rounded-lg block w-full p-2.5 outline-none"><option value="">Semua Level</option></select>
@@ -1250,34 +1257,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         window.handleOptionPaste = async (e, uniqueId) => {
-    const items = (e.clipboardData || (window.event && window.event.clipboardData))?.items;
-    if (!items) return;
+			const items = (e.clipboardData || (window.event && window.event.clipboardData))?.items;
+			if (!items) return;
 
-    let blob = null;
-    for (const item of items) {
-        if (item.type.indexOf("image") === 0) { blob = item.getAsFile(); break; }
-    }
-    
-    if (blob) {
-        e.preventDefault();
-        const cloudUrl = await uploadImageToStorage(blob);
-        if (cloudUrl) {
-            const base64Input = document.getElementById(`base64-${uniqueId}`);
-            const previewContainer = document.getElementById(`preview-container-${uniqueId}`);
-            const previewImg = document.getElementById(`preview-${uniqueId}`);
-            
-            if(base64Input && previewContainer && previewImg) {
-                base64Input.value = cloudUrl; 
-                previewImg.src = cloudUrl;
-                previewContainer.style.display = "inline-block";
-                previewContainer.classList.remove("hidden");
-                
-                updateLivePreview();
-                showNotification("Gambar opsi berhasil diunggah!");
-            }
-        }
-    }
-};
+			let blob = null;
+			for (const item of items) {
+				if (item.type.indexOf("image") === 0) { blob = item.getAsFile(); break; }
+			}
+			
+			if (blob) {
+				e.preventDefault();
+				const cloudUrl = await uploadImageToStorage(blob);
+				if (cloudUrl) {
+					const base64Input = document.getElementById(`base64-${uniqueId}`);
+					const previewContainer = document.getElementById(`preview-container-${uniqueId}`);
+					const previewImg = document.getElementById(`preview-${uniqueId}`);
+					
+					if(base64Input && previewContainer && previewImg) {
+						base64Input.value = cloudUrl; 
+						previewImg.src = cloudUrl;
+						previewContainer.style.display = "inline-block";
+						previewContainer.classList.remove("hidden");
+						
+						updateLivePreview();
+						showNotification("Gambar opsi berhasil diunggah!");
+					}
+				}
+			}
+		};
 
         document.addEventListener('DOMContentLoaded', async () => {
 			// --- SISIPKAN KODE INI ---
@@ -1711,7 +1718,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 
 				metaMapel.value = ''; // TAMBAHAN
                 metaKelas.value = ''; metaKesulitan.value = 'C1'; metaBabInput.value = ''; metaSubbabInput.value = ''; 
-                pgList.innerHTML = ''; pgkList.innerHTML = ''; bsList.innerHTML = ''; kunciJawabanSingkat.value = '';
+				document.getElementById('meta-group-id').value = ''; // KODE BARU: BERSIHKAN GROUP ID
+                
+				pgList.innerHTML = ''; pgkList.innerHTML = ''; bsList.innerHTML = ''; kunciJawabanSingkat.value = '';
                 pembahasanToggle.checked = false; pembahasanContainer.style.display = 'none'; pembahasanEditor.value = '';
                 clearImageInput('naskah'); clearImageInput('pembahasan');
                 for (let i = 0; i < 5; i++) createPgOption(false);
@@ -1769,7 +1778,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 metaKesulitan.value = soal.metadata.kesulitan || 'C1';
                 metaBabInput.value = soal.metadata.bab || ''; 
                 metaSubbabInput.value = soal.metadata.subbab || '';
-                
+                document.getElementById('meta-group-id').value = soal.metadata.groupId || ''; // KODE BARU: LOAD GROUP ID
+
                 loadImageInput('naskah', soal.naskahImage);
                 if (soal.pembahasan) {
                     pembahasanToggle.checked = true; pembahasanContainer.style.display = 'block'; pembahasanEditor.value = soal.pembahasan;
@@ -1895,7 +1905,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         kelas: metaKelas.value.trim(), 
                         kesulitan: metaKesulitan.value.trim(), 
                         bab: babVal, 
-                        subbab: subBabVal 
+                        subbab: subBabVal,
+                        groupId: document.getElementById('meta-group-id').value.trim() // KODE BARU: SIMPAN GROUP ID
                     }, 
                     skor: '1', 
                     naskah: naskahContent, 
@@ -2254,87 +2265,63 @@ editorVisual.addEventListener('paste', async (e) => {
                 .trim()                            // Hapus spasi di ujung awal dan akhir
                 .toLowerCase();                    // Bandingkan dalam huruf kecil (Case Insensitive)
 			};
+            // --- LOGIKA SIMPAN (OPTIMAL: TANPA CEK DUPLIKAT BERAT) ---
             saveBankSoalBtn.addEventListener('click', async () => {
-            const soalDataFull = collectSoalData(); 
-            if (!soalDataFull) return;
-            
-            const { publicData, kunci } = soalDataFull;
-            const wasEditing = currentEditingSoalId !== null;
-
-            saveBankSoalBtn.disabled = true; 
-            const originalText = saveBankSoalBtn.innerHTML; 
-            saveBankSoalBtn.textContent = 'Memeriksa Duplikat...';
-            
-            try {
-                // Normalisasi naskah baru yang akan disimpan
-                const normalizedNewNaskah = normalizeText(publicData.naskah);
-
-                // Ambil semua data soal (Rule 2: Filter di memori JavaScript)
-                const snapshot = await getDocs(query(bankSoalCollectionRef));
+                const soalDataFull = collectSoalData(); 
+                if (!soalDataFull) return;
                 
-                const isDuplicate = snapshot.docs.some(docSnap => {
-                    const existingData = docSnap.data();
-                    
-                    // Normalisasi naskah yang sudah ada di database
-                    const normalizedExistingNaskah = normalizeText(existingData.naskah);
-                    
-                    // Bandingkan naskah bersih DAN jenis soal
-                    const sameNaskah = (normalizedExistingNaskah === normalizedNewNaskah);
-                    const sameType = (existingData.type === publicData.type);
-                    
-                    if (wasEditing) {
-                        // Jika sedang mengedit, abaikan pengecekan terhadap dirinya sendiri
-                        return sameNaskah && sameType && docSnap.id !== currentEditingSoalId;
-                    } else {
-                        return sameNaskah && sameType;
-                    }
-                });
+                const { publicData, kunci } = soalDataFull;
+                const wasEditing = currentEditingSoalId !== null;
 
-                if (isDuplicate) {
-                    showNotification('GAGAL: Soal dengan isi teks dan tipe yang sama sudah ada di Bank Soal!', true);
-                    saveBankSoalBtn.disabled = false;
-                    saveBankSoalBtn.innerHTML = originalText;
-                    return; // Hentikan proses simpan
-                }
-
+                saveBankSoalBtn.disabled = true; 
+                const originalText = saveBankSoalBtn.innerHTML; 
                 saveBankSoalBtn.textContent = 'Menyimpan...';
+                
+                try {
+                    // Normalisasi naskah untuk penyimpanan
+                    publicData.naskah = normalizeText(publicData.naskah) ? publicData.naskah : publicData.naskah;
 
-                await runTransaction(db, async (transaction) => {
-                    let soalRef;
-                    let privatRef;
+                    // LANGSUNG PROSES TRANSAKSI KE FIREBASE (CEPAT)
+                    await runTransaction(db, async (transaction) => {
+                        let soalRef;
+                        let privatRef;
 
-                    if (currentEditingSoalId) { 
-                        soalRef = doc(bankSoalCollectionRef, currentEditingSoalId);
-                        privatRef = doc(db, 'bank_soal_privat', currentEditingSoalId);
-                    } else { 
-                        soalRef = doc(collection(db, "bank_soal"));
-                        privatRef = doc(db, "bank_soal_privat", soalRef.id);
-                    }
-                    
-                    transaction.set(soalRef, publicData);
-                    transaction.set(privatRef, {
-                        kunci: kunci,
-                        tipe: publicData.type,
-                        updated: new Date().toISOString()
+                        if (currentEditingSoalId) { 
+                            // Mode Edit
+                            soalRef = doc(bankSoalCollectionRef, currentEditingSoalId);
+                            privatRef = doc(db, 'bank_soal_privat', currentEditingSoalId);
+                        } else { 
+                            // Mode Baru
+                            soalRef = doc(collection(db, "bank_soal"));
+                            privatRef = doc(db, "bank_soal_privat", soalRef.id);
+                        }
+                        
+                        transaction.set(soalRef, publicData);
+                        transaction.set(privatRef, {
+                            kunci: kunci,
+                            tipe: publicData.type,
+                            updated: new Date().toISOString()
+                        });
                     });
-                });
-                
-                showNotification('Soal berhasil disimpan!'); 
-                clearEditor();
-                loadExistingMetadataOptions(); 
-                
-                if (wasEditing) {
-                    showModal(); 
-                    if(typeof searchFirebaseBtn !== 'undefined') searchFirebaseBtn.click();
-                }
+                    
+                    showNotification(wasEditing ? 'Perubahan berhasil disimpan!' : 'Soal baru berhasil ditambahkan!'); 
+                    clearEditor();
+                    
+                    // Kita tidak perlu reload metadata berat, cukup notifikasi
+                    if (wasEditing) {
+                        showModal(); 
+                        // Refresh list pencarian jika sedang membuka modal
+                        if(typeof searchFirebaseBtn !== 'undefined') searchFirebaseBtn.click();
+                    }
 
-            } catch (error) { 
-                showNotification(`Gagal simpan: ${error.message}`, true); 
-            } finally { 
-                saveBankSoalBtn.disabled = false; 
-                saveBankSoalBtn.innerHTML = originalText; 
-            }
-			});
+                } catch (error) { 
+                    console.error(error);
+                    showNotification(`Gagal simpan: ${error.message}`, true); 
+                } finally { 
+                    saveBankSoalBtn.disabled = false; 
+                    saveBankSoalBtn.innerHTML = originalText; 
+                }
+            });
             clearEditorBtn.addEventListener('click', () => {
                 // SIMPAN STATUS DULU SEBELUM CLEAR
                 const wasEditing = currentEditingSoalId !== null;
@@ -2358,10 +2345,13 @@ editorVisual.addEventListener('paste', async (e) => {
             let filterBabSubBabMap = {}; 
             let allSubBabsList = new Set();
 
+			// --- LOGIKA FILTER RINGAN (HANYA MEMUAT OPSI STATIS & HEMAT KUOTA) ---
             async function populateFilterDropdowns() {
-                if (!bankSoalCollectionRef) return;
+                // Kita tidak lagi mendownload seluruh DB. 
+                // Cukup reset dropdown ke default. User bisa mengetik manual di filter jika perlu.
+                
                 const filters = {
-					mapel: document.getElementById('filter-mapel'), // TAMBAHAN
+                    mapel: document.getElementById('filter-mapel'),
                     tipe: document.getElementById('filter-tipe'), 
                     kelas: document.getElementById('filter-kelas'), 
                     kesulitan: document.getElementById('filter-kesulitan'), 
@@ -2369,47 +2359,33 @@ editorVisual.addEventListener('paste', async (e) => {
                     subbab: document.getElementById('filter-subbab') 
                 };
                 
-                Object.values(filters).forEach(s => { if(s) s.innerHTML = `<option value="">${s.options[0].text}</option>`; });
+                // Reset options
+                Object.values(filters).forEach(s => { 
+                    if(s) s.innerHTML = `<option value="">${s.options[0] ? s.options[0].text : 'Semua'}</option>`; 
+                });
                 
+                // Isi Filter Tipe (Statis)
                 const typeOptions = [
                     { v: 'pg', l: 'PG' },
                     { v: 'pgk', l: 'PGK' },
                     { v: 'bs', l: 'BS' },
                     { v: 'esai-singkat', l: 'Essai Singkat' },
-                    { v: 'esai-kompleks', l: 'Essai Kompleks (Uraian)' }
+                    { v: 'esai-kompleks', l: 'Essai Kompleks' }
                 ];
                 typeOptions.forEach(o => filters.tipe.add(new Option(o.l, o.v)));
 
-                const snap = await getDocs(query(bankSoalCollectionRef));
-                const sets = { mapel: new Set(), kelas: new Set(), kesulitan: new Set(), bab: new Set() };
-                
-                filterBabSubBabMap = {};
-                allSubBabsList = new Set();
+                // Isi Filter Kelas (Statis)
+                ['X', 'XI', 'XII'].forEach(k => filters.kelas.add(new Option(`Kelas ${k}`, k)));
 
-                snap.forEach(docSnap => {
-                    const d = docSnap.data();
-                    if(d.metadata) {
-						if(d.metadata.mapel) sets.mapel.add(d.metadata.mapel); // TAMBAHAN
-                        if(d.metadata.kelas) sets.kelas.add(d.metadata.kelas); 
-                        if(d.metadata.kesulitan) sets.kesulitan.add(d.metadata.kesulitan); 
-                        if(d.metadata.bab) {
-                            sets.bab.add(d.metadata.bab); 
-                            if(!filterBabSubBabMap[d.metadata.bab]) filterBabSubBabMap[d.metadata.bab] = new Set();
-                            if(d.metadata.subbab) {
-                                filterBabSubBabMap[d.metadata.bab].add(d.metadata.subbab);
-                                allSubBabsList.add(d.metadata.subbab); 
-                            }
-                        }
-                    }
-                });
+                // Isi Filter Level (Statis)
+                ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'].forEach(k => filters.kesulitan.add(new Option(k, k)));
                 
-				sets.mapel.forEach(v => filters.mapel.add(new Option(v, v))); // TAMBAHAN
-                sets.kelas.forEach(v => filters.kelas.add(new Option(v, v))); 
-                sets.kesulitan.forEach(v => filters.kesulitan.add(new Option(v, v))); 
-                sets.bab.forEach(v => filters.bab.add(new Option(v, v))); 
-                allSubBabsList.forEach(v => filters.subbab.add(new Option(v, v)));
+                // Catatan: Untuk Mapel, BAB, dan SubBAB, biarkan user memilih 'Semua' 
+                // atau kita bisa membiarkan mereka mengetik jika elemennya diubah jadi input list.
+                // Karena elemennya <select>, biarkan kosong agar 'Semua' menjadi default yang cepat.
+                
+                console.log("Filter dimuat (Mode Ringan/Hemat Kuota).");
             }
-
             document.getElementById('filter-bab').addEventListener('change', function() {
                 const selectedBab = this.value;
                 const subSelect = document.getElementById('filter-subbab');
@@ -2500,7 +2476,6 @@ editorVisual.addEventListener('paste', async (e) => {
                         item.innerHTML = `
                             <div class="flex justify-between items-start gap-4 h-full">
                                 
-                                <!-- Nomor Urut -->
                                 <div class="flex-none w-8 pt-1">
                                     <span class="text-lg font-bold text-gray-300 dark:text-emerald-800 select-none">#${index + 1}</span>
                                 </div>
@@ -2508,7 +2483,6 @@ editorVisual.addEventListener('paste', async (e) => {
                                 <div class="flex-1 min-w-0 py-1">
                                     <p class="text-sm text-gray-800 dark:text-emerald-50 line-clamp-2 mb-2 leading-relaxed">${(d.naskah || '...').substring(0,150)}</p>
                                     
-                                    <!-- LABEL LABEL BARU (Tipe, Level, Bab, Sub) -->
                                     <div class="flex flex-wrap gap-2 mt-2">
                                         <span class="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 px-2 py-1 rounded font-bold border border-blue-200 dark:border-blue-800">
                                             ${(d.type||'?').toUpperCase()}
@@ -2519,9 +2493,10 @@ editorVisual.addEventListener('paste', async (e) => {
                                         <span class="text-[10px] bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded border border-gray-200 dark:border-gray-600">
                                             ${d.metadata?.bab || 'Bab?'}
                                         </span>
-                                        <span class="text-[10px] bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 px-2 py-1 rounded border border-teal-200 dark:border-teal-800">
-                                            ${d.metadata?.subbab || 'Sub?'}
-                                        </span>
+                                        
+                                        <!-- INDIKATOR GROUP ID (BARU) -->
+                                        ${d.metadata?.groupId ? `<span class="text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 rounded font-bold border border-purple-200 dark:border-purple-800 flex items-center gap-1">🔗 ${d.metadata.groupId}</span>` : ''}
+
                                         ${keyIndicator}
                                     </div>
                                 </div>
@@ -2643,71 +2618,86 @@ editorVisual.addEventListener('paste', async (e) => {
 		}
 
 		/**
-		 * 2. Fungsi untuk Memperbarui Dropdown/Datalist secara Cerdas
-		 */
-		function perbaruiDropdownFilter(mapel, kelas, bab, targetKelasId, targetBabId, targetSubId) {
-			const kelasSelect = document.getElementById(targetKelasId);
-			const babTarget = document.getElementById(targetBabId);
-			const subTarget = document.getElementById(targetSubId);
+         * FUNGSI FILTER CERDAS (DIPERBAIKI)
+         * - Input Soal: Kelas selalu muncul (X, XI, XII). BAB menyesuaikan Mapel+Kelas.
+         * - Bank Soal: Filter ketat (hanya menampilkan apa yang ada di DB).
+         */
+        function perbaruiDropdownFilter(mapel, kelas, bab, targetKelasId, targetBabId, targetSubId) {
+            const kelasSelect = document.getElementById(targetKelasId);
+            const babTarget = document.getElementById(targetBabId);
+            const subTarget = document.getElementById(targetSubId);
 
-			const cleanMapel = mapel ? mapel.trim() : "";
-			const cleanKelas = kelas ? kelas.trim() : "";
-			const cleanBab = bab ? bab.trim() : "";
+            const cleanMapel = mapel ? mapel.trim() : "";
+            const cleanKelas = kelas ? kelas.trim() : "";
+            const cleanBab = bab ? bab.trim() : "";
 
-			// Cari key yang tepat di object (menangani perbedaan huruf besar/kecil)
-			const mapelKey = getKeyCaseInsensitive(petaKurikulumOtomatis, cleanMapel);
-			const kelasKey = mapelKey ? getKeyCaseInsensitive(petaKurikulumOtomatis[mapelKey], cleanKelas) : null;
-			const babKey = (mapelKey && kelasKey) ? getKeyCaseInsensitive(petaKurikulumOtomatis[mapelKey][kelasKey], cleanBab) : null;
+            // Cari key di database peta kurikulum
+            const mapelKey = getKeyCaseInsensitive(petaKurikulumOtomatis, cleanMapel);
+            const kelasKey = mapelKey ? getKeyCaseInsensitive(petaKurikulumOtomatis[mapelKey], cleanKelas) : null;
+            const babKey = (mapelKey && kelasKey) ? getKeyCaseInsensitive(petaKurikulumOtomatis[mapelKey][kelasKey], cleanBab) : null;
 
-			// --- A. Update Dropdown Kelas ---
-			if (kelasSelect && kelasSelect.tagName === 'SELECT') {
-				const kelasLama = kelasSelect.value;
-				kelasSelect.innerHTML = '<option value="">-- Semua Kelas --</option>';
-				if (mapelKey && petaKurikulumOtomatis[mapelKey]) {
-					Object.keys(petaKurikulumOtomatis[mapelKey]).sort().forEach(k => {
-						const opt = document.createElement('option');
-						opt.value = k; opt.textContent = "Kelas " + k;
-						kelasSelect.appendChild(opt);
-					});
-				}
-				kelasSelect.value = kelasLama;
-			}
+            // --- A. UPDATE DROPDOWN KELAS ---
+            if (kelasSelect && kelasSelect.tagName === 'SELECT') {
+                const kelasLama = kelasSelect.value;
+                
+                // LOGIKA BARU: 
+                // Jika targetnya adalah 'meta-kelas' (Input Soal), JANGAN hapus opsi standar.
+                if (targetKelasId === 'meta-kelas') {
+                    // Reset ke opsi standar
+                    kelasSelect.innerHTML = `
+                        <option value="" disabled selected>Pilih Kelas</option>
+                        <option value="X">Kelas X</option>
+                        <option value="XI">Kelas XI</option>
+                        <option value="XII">Kelas XII</option>
+                    `;
+                } else {
+                    // Jika targetnya 'filter-kelas' (Bank Soal), tampilkan hanya yang ada di DB
+                    kelasSelect.innerHTML = '<option value="">-- Semua Kelas --</option>';
+                    if (mapelKey && petaKurikulumOtomatis[mapelKey]) {
+                        Object.keys(petaKurikulumOtomatis[mapelKey]).sort().forEach(k => {
+                            const opt = document.createElement('option');
+                            opt.value = k; opt.textContent = k; // "Kelas" sudah ada di teks opsi filter biasanya
+                            kelasSelect.appendChild(opt);
+                        });
+                    }
+                }
+                // Kembalikan nilai yang dipilih sebelumnya jika masih valid
+                kelasSelect.value = kelasLama;
+            }
 
-			// --- B. Update BAB (Berdasarkan Mapel & Kelas) ---
-			if (babTarget) {
-				const isSelect = babTarget.tagName === 'SELECT';
-				const babLama = babTarget.value;
-				babTarget.innerHTML = isSelect ? '<option value="">-- Pilih BAB --</option>' : '';
-				
-				if (mapelKey && kelasKey && petaKurikulumOtomatis[mapelKey][kelasKey]) {
-					Object.keys(petaKurikulumOtomatis[mapelKey][kelasKey]).sort().forEach(b => {
-						const opt = document.createElement('option');
-						opt.value = b;
-						if (isSelect) opt.textContent = b;
-						babTarget.appendChild(opt);
-					});
-					if (isSelect) babTarget.value = babLama;
-				}
-			}
+            // --- B. UPDATE BAB (CERDAS: Berdasarkan Mapel DAN Kelas) ---
+            if (babTarget) {
+                const isSelect = babTarget.tagName === 'SELECT';
+                // Jika inputnya DATALIST (untuk Input Soal), kita kosongkan isinya dulu
+                // Jika inputnya SELECT (untuk Bank Soal), kita reset optionnya
+                babTarget.innerHTML = isSelect ? '<option value="">-- Pilih BAB --</option>' : '';
+                
+                // Logika: Hanya tampilkan BAB jika Mapel DAN Kelas sudah dipilih/ditemukan datanya
+                if (mapelKey && kelasKey && petaKurikulumOtomatis[mapelKey][kelasKey]) {
+                    Object.keys(petaKurikulumOtomatis[mapelKey][kelasKey]).sort().forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b;
+                        if (isSelect) opt.textContent = b;
+                        babTarget.appendChild(opt);
+                    });
+                }
+            }
 
-			// --- C. Update Sub BAB (Berdasarkan Mapel, Kelas & BAB) ---
-			if (subTarget) {
-				const isSelect = subTarget.tagName === 'SELECT';
-				const subLama = subTarget.value;
-				subTarget.innerHTML = isSelect ? '<option value="">-- Pilih Sub BAB --</option>' : '';
-				
-				if (mapelKey && kelasKey && babKey && petaKurikulumOtomatis[mapelKey][kelasKey][babKey]) {
-					petaKurikulumOtomatis[mapelKey][kelasKey][babKey].forEach(s => {
-						const opt = document.createElement('option');
-						opt.value = s;
-						if (isSelect) opt.textContent = s;
-						subTarget.appendChild(opt);
-					});
-					if (isSelect) subTarget.value = subLama;
-				}
-			}
-		}
-
+            // --- C. UPDATE SUB-BAB (CERDAS: Berdasarkan BAB) ---
+            if (subTarget) {
+                const isSelect = subTarget.tagName === 'SELECT';
+                subTarget.innerHTML = isSelect ? '<option value="">-- Pilih Sub BAB --</option>' : '';
+                
+                if (mapelKey && kelasKey && babKey && petaKurikulumOtomatis[mapelKey][kelasKey][babKey]) {
+                    petaKurikulumOtomatis[mapelKey][kelasKey][babKey].forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s;
+                        if (isSelect) opt.textContent = s;
+                        subTarget.appendChild(opt);
+                    });
+                }
+            }
+        }
 		// Fungsi untuk mentrigger sinkronisasi awal di Metadata & Bank Soal
 		function triggerInitialSync() {
 			// Sinkron Metadata
@@ -2729,38 +2719,55 @@ editorVisual.addEventListener('paste', async (e) => {
 		// 3. Pasang Event Listener saat halaman dimuat
 		document.addEventListener('DOMContentLoaded', () => {
 			// Jalankan pemindaian database
-			setTimeout(bangunPetaKurikulum, 2000);
+			// JALANKAN INI: Diperlukan agar fitur "Filter Cerdas" tahu data BAB/SubBAB yang sudah ada
+            setTimeout(bangunPetaKurikulum, 1000);
+			// --- A. LOGIKA UNTUK METADATA (INPUT SOAL - SMART FILTER) ---
+            const mMapel = document.getElementById('meta-mapel');
+            const mKelas = document.getElementById('meta-kelas');
+            const mBabInput = document.getElementById('meta-bab');
+            const mSubInput = document.getElementById('meta-subbab');
 
-			// --- A. LOGIKA UNTUK METADATA (INPUT SOAL) ---
-			const mMapel = document.getElementById('meta-mapel');
-			const mKelas = document.getElementById('meta-kelas');
-			const mBabInput = document.getElementById('meta-bab');
-			const mSubInput = document.getElementById('meta-subbab');
+            // ID Datalist di HTML
+            const mBabListId = 'bab-list';      // Pastikan ID ini sesuai dengan <datalist id="bab-list">
+            const mSubListId = 'subbab-list';   // Pastikan ID ini sesuai dengan <datalist id="subbab-list">
 
-			const mBabList = 'list-bab';
-			const mSubList = 'list-subbab';
+            if (mMapel && mKelas) {
+                const handleMetadataSync = () => {
+                    // Panggil fungsi filter dengan target ID datalist
+                    // Ini akan mengisi datalist BAB berdasarkan Mapel & Kelas yang dipilih
+                    perbaruiDropdownFilter(
+                        mMapel.value, 
+                        mKelas.value, 
+                        mBabInput ? mBabInput.value : "", 
+                        'meta-kelas', // Target Kelas (agar tidak direset total)
+                        mBabListId,   // Target BAB (datalist)
+                        mSubListId    // Target SubBAB (datalist)
+                    );
+                };
 
-			if (mMapel && mKelas) {
-				const handleMetadataSync = () => {
-					perbaruiDropdownFilter(mMapel.value, mKelas.value, mBabInput ? mBabInput.value : "", 'meta-kelas', mBabList, mSubList);
-				};
+                // 1. Saat Mapel diketik/dipilih -> Trigger update (Kelas tetap utuh, BAB menyesuaikan)
+                mMapel.addEventListener('input', () => {
+                    handleMetadataSync();
+                });
+                
+                // 2. Saat Mapel kehilangan fokus (selesai ketik) -> Trigger update lagi untuk memastikan
+                mMapel.addEventListener('change', handleMetadataSync);
 
-				mMapel.addEventListener('input', () => {
-					if(mBabInput) mBabInput.value = ""; 
-					if(mSubInput) mSubInput.value = "";
-					handleMetadataSync();
-				});
+                // 3. Saat Kelas dipilih -> Trigger update (BAB akan terfilter spesifik Mapel + Kelas ini)
+                mKelas.addEventListener('change', () => {
+                    // Kosongkan BAB jika kelas berubah, agar user memilih dari daftar baru
+                    if(mBabInput) mBabInput.value = ""; 
+                    if(mSubInput) mSubInput.value = "";
+                    handleMetadataSync();
+                });
 
-				mKelas.addEventListener('change', () => {
-					if(mBabInput) mBabInput.value = ""; 
-					if(mSubInput) mSubInput.value = "";
-					handleMetadataSync();
-				});
-
-				if(mBabInput) {
-					mBabInput.addEventListener('input', handleMetadataSync);
-				}
-			}
+                // 4. Saat BAB diketik -> Trigger update (SubBAB menyesuaikan)
+                if(mBabInput) {
+                    mBabInput.addEventListener('input', handleMetadataSync);
+                    // Tambahan: Saat fokus ke input BAB, paksa update agar list muncul
+                    mBabInput.addEventListener('focus', handleMetadataSync);
+                }
+            }
 
 			// --- B. LOGIKA UNTUK BANK SOAL (FILTER CARI) ---
 			const fMapel = document.getElementById('filter-mapel');
@@ -2795,5 +2802,20 @@ editorVisual.addEventListener('paste', async (e) => {
 			if(btnCari) btnCari.addEventListener('click', bangunPetaKurikulum);
 		});
 	</script>
+	<!-- MODAL KONFIRMASI AI (FIXED) -->
+    <div id="aiDecisionModal" class="modal fixed inset-0 z-[70] hidden bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-cyber-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-emerald-900 max-w-md w-full p-6 text-center transform transition-all scale-100">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 mb-4">
+                <svg class="h-6 w-6 text-purple-600 dark:text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <h3 class="text-lg leading-6 font-bold text-gray-900 dark:text-white mb-2">Generate Opsi AI?</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">AI akan membaca naskah soal dan membuatkan opsi jawaban serta kunci otomatis. Opsi manual yang sudah ada akan ditimpa.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="ai-confirm-no" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-bold transition-colors">Batal</button>
+                <button id="ai-confirm-yes" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold shadow-lg transition-transform hover:scale-105">Ya, Proses AI</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
+
