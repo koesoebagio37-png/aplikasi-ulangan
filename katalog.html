@@ -47,6 +47,13 @@
         .dark .smart-select {
              background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
         }
+        
+        /* Table Styles for BS Questions */
+        .bs-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
+        .bs-table th, .bs-table td { padding: 0.5rem; border-bottom: 1px solid #e5e7eb; }
+        .dark .bs-table th, .dark .bs-table td { border-color: #374151; }
+        .bs-table th { text-align: left; font-weight: 600; color: #4b5563; }
+        .dark .bs-table th { color: #9ca3af; }
     </style>
 </head>
 <body class="bg-gray-100 text-ink dark:bg-cyber-900 dark:text-gray-100 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-300">
@@ -68,11 +75,10 @@
     <!-- NAVBAR -->
     <header class="bg-slate-900 dark:bg-cyber-800 text-white shadow-lg z-20 flex-none h-16 px-6 flex justify-between items-center border-b border-slate-800 dark:border-cyber-700">
         <div class="flex items-center gap-3">
-            <div class="w-12 h-12 bg-gold rounded flex items-center justify-center text-slate-900 font-serif font-bold text-2xl">KS</div>
+            <div class="w-12 h-12 bg-gold rounded flex items-center justify-center text-slate-900 font-serif font-bold text-4xl">B</div>
             <div>
-                <h1 class="font-serif font-bold text-lg tracking-wide text-white">KATALOG SOAL</h1>
+                <h1 class="font-serif font-bold text-lg tracking-wide text-white">DIGITAL CATALOG</h1>
                 <p class="text-[10px] text-gray-400 uppercase tracking-widest">Bank Soal Terpadu</p>
-				<p class="text-[10px] text-gray-400 italic">Compiled by Koes</p>
             </div>
         </div>
 
@@ -268,7 +274,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = { apiKey: "AIzaSyAwIwimlyrE4qQqYa2gA8Pfygd59USsveQ", authDomain: "aplikasi-ulangan-01.firebaseapp.com", projectId: "aplikasi-ulangan-01", storageBucket: "aplikasi-ulangan-01.firebasestorage.app", messagingSenderId: "409085062439", appId: "1:409085062439:web:280589d1a3e12e7b980d02" };
 
@@ -357,7 +363,40 @@
                     if(!d.metadata.mapel) d.metadata.mapel = 'Umum';
                     if(!d.metadata.kelas) d.metadata.kelas = 'Umum';
                     if(!d.metadata.bab) d.metadata.bab = 'Lainnya';
+                    
+                    // --- SORTING HELPER: Convert Timestamp to Milliseconds ---
+                    if (d.updatedAt && d.updatedAt.seconds) {
+                        d.sortTime = d.updatedAt.seconds;
+                    } else if (d.updatedAt && typeof d.updatedAt === 'string') {
+                        d.sortTime = new Date(d.updatedAt).getTime() / 1000;
+                    } else {
+                        d.sortTime = 0;
+                    }
+
                     allQuestions.push(d); 
+                });
+
+                // --- SORTING LOGIC: BOOK ORDER (Mapel > Kelas > Bab > Group > Time ASC) ---
+                allQuestions.sort((a, b) => {
+                    // 1. Mapel (Asc)
+                    if (a.metadata.mapel !== b.metadata.mapel) 
+                        return a.metadata.mapel.localeCompare(b.metadata.mapel);
+                    
+                    // 2. Kelas (Asc)
+                    if (a.metadata.kelas !== b.metadata.kelas) 
+                        return a.metadata.kelas.localeCompare(b.metadata.kelas);
+                    
+                    // 3. Bab (Asc)
+                    if (a.metadata.bab !== b.metadata.bab) 
+                        return a.metadata.bab.localeCompare(b.metadata.bab);
+
+                    // 4. Group ID (Together)
+                    const gA = a.metadata.groupId || '';
+                    const gB = b.metadata.groupId || '';
+                    if (gA !== gB) return gA.localeCompare(gB);
+
+                    // 5. Time (ASCENDING: Oldest First) -> Fixes "Soal 4 is Soal 2" issue
+                    return a.sortTime - b.sortTime;
                 });
 
                 const keySnap = await getDocs(collection(db, 'bank_soal_privat'));
@@ -577,6 +616,11 @@
 
                 const babBadge = q.metadata?.bab ? `<span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-[10px] font-bold border border-gray-200 dark:border-gray-600 truncate max-w-[120px]" title="${q.metadata.bab}">${q.metadata.bab}</span>` : '';
                 const subBadge = q.metadata?.subbab ? `<span class="px-2 py-0.5 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-300 rounded text-[10px] font-bold border border-teal-100 dark:border-teal-800 truncate max-w-[120px]" title="${q.metadata.subbab}">${q.metadata.subbab}</span>` : '';
+                
+                // NEW: Group ID Badge Display
+                const groupBadge = q.metadata?.groupId 
+                    ? `<span class="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded text-[10px] font-bold border border-indigo-100 dark:border-indigo-800 truncate max-w-[120px]" title="ID Kelompok: ${q.metadata.groupId}">🔗 Group: ${q.metadata.groupId}</span>` 
+                    : '';
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-3">
@@ -587,6 +631,7 @@
                                 <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${levelColor}">${q.metadata?.kesulitan || 'Lvl'}</span>
                                 ${babBadge}
                                 ${subBadge}
+                                ${groupBadge}
                             </div>
                         </div>
                         <button id="btn-cart-${q.id}" onclick="window.toggleCart('${q.id}')" class="btn-select w-8 h-8 rounded-full flex items-center justify-center border ${btnClass}">
@@ -595,15 +640,63 @@
                     </div>
                     
                     <div class="flex-1">
-                        <div class="font-serif text-slate-800 dark:text-gray-200 leading-relaxed text-sm mb-2 line-clamp-4">${q.naskah}</div>
+                        <div class="font-serif text-slate-800 dark:text-gray-200 leading-relaxed text-sm mb-2">${q.naskah}</div>
                         ${imgHtml}
+                        ${q.naskahBawah ? `<div class="font-serif text-slate-800 dark:text-gray-200 leading-relaxed text-sm mt-2">${q.naskahBawah}</div>` : ''}
                         ${optHtml}
-                    </div>`;
+                    </div>
+                    
+                    <!-- FOOTER KARTU (DATE & DELETE) -->
+                    <div class="mt-4 pt-3 border-t border-gray-100 dark:border-cyber-700 flex justify-between items-center">
+                        <span class="text-[10px] text-gray-400">${q.updatedAt && q.updatedAt.seconds ? new Date(q.updatedAt.seconds * 1000).toLocaleDateString() : 'Tanggal -'}</span>
+                        <button onclick="window.deleteQuestion('${q.id}', '${(q.naskah||'').substring(0,20).replace(/'/g, "\\'")}')" class="p-2 text-gray-400 hover:text-red-500 transition-colors bg-transparent rounded-full hover:bg-red-50 dark:hover:bg-red-900/30" title="Hapus Permanen">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                    `;
                 els.grid.appendChild(card);
             });
             
             if(window.MathJax) MathJax.typesetPromise();
         }
+
+        // --- DELETE LOGIC (BARU) ---
+        window.deleteQuestion = async (id, naskahKecil) => {
+            if(!confirm(`PERINGATAN: Menghapus soal ini akan menghilangkannya permanen dari database.\n\nSoal: "${naskahKecil}..."\n\nLanjutkan hapus?`)) return;
+            
+            // Tampilkan loading sementara
+            els.loading.classList.remove('hidden');
+            
+            try {
+                // Hapus dari Public Collection
+                await deleteDoc(doc(db, 'bank_soal', id));
+                // Hapus dari Private Collection (Kunci)
+                await deleteDoc(doc(db, 'bank_soal_privat', id));
+                
+                // Hapus dari memori lokal (Array) agar tidak perlu reload page
+                allQuestions = allQuestions.filter(q => q.id !== id);
+                filteredQuestions = filteredQuestions.filter(q => q.id !== id);
+                
+                // Update UI
+                renderGrid();
+                
+                // Hapus dari keranjang jika ada
+                if(cart.has(id)) {
+                    cart.delete(id);
+                    updateCartUI();
+                }
+                
+                const t = document.getElementById('toast'); 
+                document.getElementById('toast-msg').innerText = "Soal berhasil dihapus.";
+                t.classList.remove('translate-y-20'); 
+                setTimeout(()=>t.classList.add('translate-y-20'), 3000);
+                
+            } catch (e) {
+                alert("Gagal menghapus: " + e.message);
+            } finally {
+                els.loading.classList.add('hidden');
+            }
+        };
 
         // --- CART LOGIC ---
         window.toggleCart = (id) => {
@@ -691,5 +784,4 @@
         };
     </script>
 </body>
-
 </html>
