@@ -2151,13 +2151,34 @@ editorVisual.addEventListener('paste', async (e) => {
                     };
                     reader.readAsDataURL(blob);
                 } else {
-                    // --- MODE B: SIMPAN SEBAGAI GAMBAR ---
-                    const cloudUrl = await uploadImageToStorage(blob);
-                    if (cloudUrl) {
-                        loadImageInput('naskah', cloudUrl);
-                        updateLivePreview();
-                        showNotification('Gambar berhasil diunggah ke Cloud Storage!');
-                    }
+                    // --- MODE B: SIMPAN SEBAGAI GAMBAR (DENGAN KOMPRESI OTOMATIS) ---
+                    showNotification("Mengompresi & mengunggah gambar...", false);
+
+                    // 1. Baca file asli menjadi Base64 untuk dikompres
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        try {
+                            // 2. Lakukan Kompresi (Quality 0.6 = 60%, Width max 800px)
+                            const compressedBase64 = await compressImage(event.target.result, 800, 0.6);
+                            
+                            // 3. Ubah Base64 Kompresi kembali menjadi BLOB agar bisa diupload ke Storage
+                            const res = await fetch(compressedBase64);
+                            const compressedBlob = await res.blob();
+
+                            // 4. Upload Blob yang sudah dikompres ke Firebase Storage
+                            const cloudUrl = await uploadImageToStorage(compressedBlob);
+
+                            if (cloudUrl) {
+                                loadImageInput('naskah', cloudUrl);
+                                updateLivePreview();
+                                showNotification('Gambar Terkompresi berhasil disimpan ke Cloud!');
+                            }
+                        } catch (err) {
+                            console.error("Gagal kompresi:", err);
+                            showNotification("Gagal memproses gambar.", true);
+                        }
+                    };
+                    reader.readAsDataURL(blob);
                 }
                 break; 
             }
@@ -2818,4 +2839,5 @@ editorVisual.addEventListener('paste', async (e) => {
     </div>
 </body>
 </html>
+
 
