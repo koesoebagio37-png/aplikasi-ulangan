@@ -365,29 +365,23 @@
                     if(!d.metadata.bab) d.metadata.bab = 'Lainnya';
                     
                     // --- DATE HELPER (UPDATED & DEBUGGING) ---
-                    // Log data ke console untuk debugging (Hapus nanti jika sudah fix)
-                    // console.log("Data Soal:", d);
-
-                    // Cek berbagai kemungkinan nama field termasuk tanggalUpdate yang dipakai di Editor Soal
                     const dateVal = d.updatedAt || d.tanggal || d.tanggalUpdate || d.createdAt || d.timestamp || d.date;
 
                     if (dateVal && dateVal.seconds) {
-                        // Firestore Timestamp
                         d.sortTime = dateVal.seconds;
                         d.displayDate = new Date(dateVal.seconds * 1000).toLocaleDateString('id-ID');
                     } else if (dateVal && typeof dateVal === 'string') {
-                        // ISO String
                         d.sortTime = new Date(dateVal).getTime() / 1000;
                         d.displayDate = new Date(dateVal).toLocaleDateString('id-ID');
                     } else {
                         d.sortTime = 0;
-                        d.displayDate = 'Tanggal -'; // Default jika tidak ada tanggal
+                        d.displayDate = 'Tanggal -'; 
                     }
 
                     allQuestions.push(d); 
                 });
 
-                // --- SORTING LOGIC: BOOK ORDER (Mapel > Kelas > Bab > Group > Time ASC) ---
+                // --- SORTING LOGIC ---
                 allQuestions.sort((a, b) => {
                     if (a.metadata.mapel !== b.metadata.mapel) return a.metadata.mapel.localeCompare(b.metadata.mapel);
                     if (a.metadata.kelas !== b.metadata.kelas) return a.metadata.kelas.localeCompare(b.metadata.kelas);
@@ -685,6 +679,7 @@
                     updateCartUI();
                 }
                 
+                // Show toast manually since helper is inside script module or not available globally yet
                 const t = document.getElementById('toast'); 
                 document.getElementById('toast-msg').innerText = "Soal berhasil dihapus.";
                 t.classList.remove('translate-y-20'); 
@@ -696,25 +691,63 @@
                 els.loading.classList.add('hidden');
             }
         };
+        
+        // Helper function for Toast
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('translate-y-20');
+            setTimeout(() => t.classList.add('translate-y-20'), 3000);
+        }
 
-        // --- CART LOGIC ---
+        // --- CART LOGIC (UPDATED WITH GROUP ID SUPPORT) ---
         window.toggleCart = (id) => {
-            const btn = document.getElementById(`btn-cart-${id}`);
-            if (cart.has(id)) {
-                cart.delete(id);
-                if (btn) {
-                    btn.classList.remove('selected', 'bg-gold', 'text-white', 'shadow-md', 'border-gold', 'transform', 'scale-110');
-                    btn.classList.add('bg-gray-100', 'dark:bg-cyber-700', 'text-gray-400', 'dark:text-gray-300', 'hover:bg-gray-200', 'border-gray-200');
-                    btn.innerHTML = '+';
-                }
-            } else {
-                cart.add(id);
-                if (btn) {
-                    btn.classList.remove('bg-gray-100', 'dark:bg-cyber-700', 'text-gray-400', 'dark:text-gray-300', 'hover:bg-gray-200', 'border-gray-200');
-                    btn.classList.add('selected', 'bg-gold', 'text-white', 'shadow-md', 'border-gold', 'transform', 'scale-110');
-                    btn.innerHTML = '✓';
+            const targetQ = allQuestions.find(q => q.id === id);
+            if(!targetQ) return;
+
+            const groupId = targetQ.metadata?.groupId;
+            const isSelecting = !cart.has(id); // True jika mau mencentang, False jika mau uncheck
+            
+            let idsToUpdate = [id];
+
+            // Jika punya Group ID, cari temannya
+            if (groupId) {
+                // Cari semua soal di database lokal yang punya group ID sama
+                const groupMembers = allQuestions.filter(q => q.metadata?.groupId === groupId);
+                idsToUpdate = groupMembers.map(q => q.id);
+                
+                // Feedback ke user
+                if(idsToUpdate.length > 1) {
+                    showToast(isSelecting 
+                        ? `Memilih ${idsToUpdate.length} soal terkait (Grup: ${groupId})` 
+                        : `Membatalkan ${idsToUpdate.length} soal terkait (Grup: ${groupId})`
+                    );
                 }
             }
+
+            // Eksekusi Update
+            idsToUpdate.forEach(targetId => {
+                const btn = document.getElementById(`btn-cart-${targetId}`);
+                
+                if (isSelecting) {
+                    cart.add(targetId);
+                    // Update UI button jika elemennya sedang tampil
+                    if (btn) {
+                        btn.classList.remove('bg-gray-100', 'dark:bg-cyber-700', 'text-gray-400', 'dark:text-gray-300', 'hover:bg-gray-200', 'border-gray-200');
+                        btn.classList.add('selected', 'bg-gold', 'text-white', 'shadow-md', 'border-gold', 'transform', 'scale-110');
+                        btn.innerHTML = '✓';
+                    }
+                } else {
+                    cart.delete(targetId);
+                    // Update UI button jika elemennya sedang tampil
+                    if (btn) {
+                        btn.classList.remove('selected', 'bg-gold', 'text-white', 'shadow-md', 'border-gold', 'transform', 'scale-110');
+                        btn.classList.add('bg-gray-100', 'dark:bg-cyber-700', 'text-gray-400', 'dark:text-gray-300', 'hover:bg-gray-200', 'border-gray-200');
+                        btn.innerHTML = '+';
+                    }
+                }
+            });
+
             updateCartUI();
         };
 
