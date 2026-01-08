@@ -364,13 +364,24 @@
                     if(!d.metadata.kelas) d.metadata.kelas = 'Umum';
                     if(!d.metadata.bab) d.metadata.bab = 'Lainnya';
                     
-                    // --- SORTING HELPER: Convert Timestamp to Milliseconds ---
-                    if (d.updatedAt && d.updatedAt.seconds) {
-                        d.sortTime = d.updatedAt.seconds;
-                    } else if (d.updatedAt && typeof d.updatedAt === 'string') {
-                        d.sortTime = new Date(d.updatedAt).getTime() / 1000;
+                    // --- DATE HELPER (UPDATED & DEBUGGING) ---
+                    // Log data ke console untuk debugging (Hapus nanti jika sudah fix)
+                    // console.log("Data Soal:", d);
+
+                    // Cek berbagai kemungkinan nama field termasuk tanggalUpdate yang dipakai di Editor Soal
+                    const dateVal = d.updatedAt || d.tanggal || d.tanggalUpdate || d.createdAt || d.timestamp || d.date;
+
+                    if (dateVal && dateVal.seconds) {
+                        // Firestore Timestamp
+                        d.sortTime = dateVal.seconds;
+                        d.displayDate = new Date(dateVal.seconds * 1000).toLocaleDateString('id-ID');
+                    } else if (dateVal && typeof dateVal === 'string') {
+                        // ISO String
+                        d.sortTime = new Date(dateVal).getTime() / 1000;
+                        d.displayDate = new Date(dateVal).toLocaleDateString('id-ID');
                     } else {
                         d.sortTime = 0;
+                        d.displayDate = 'Tanggal -'; // Default jika tidak ada tanggal
                     }
 
                     allQuestions.push(d); 
@@ -378,24 +389,12 @@
 
                 // --- SORTING LOGIC: BOOK ORDER (Mapel > Kelas > Bab > Group > Time ASC) ---
                 allQuestions.sort((a, b) => {
-                    // 1. Mapel (Asc)
-                    if (a.metadata.mapel !== b.metadata.mapel) 
-                        return a.metadata.mapel.localeCompare(b.metadata.mapel);
-                    
-                    // 2. Kelas (Asc)
-                    if (a.metadata.kelas !== b.metadata.kelas) 
-                        return a.metadata.kelas.localeCompare(b.metadata.kelas);
-                    
-                    // 3. Bab (Asc)
-                    if (a.metadata.bab !== b.metadata.bab) 
-                        return a.metadata.bab.localeCompare(b.metadata.bab);
-
-                    // 4. Group ID (Together)
+                    if (a.metadata.mapel !== b.metadata.mapel) return a.metadata.mapel.localeCompare(b.metadata.mapel);
+                    if (a.metadata.kelas !== b.metadata.kelas) return a.metadata.kelas.localeCompare(b.metadata.kelas);
+                    if (a.metadata.bab !== b.metadata.bab) return a.metadata.bab.localeCompare(b.metadata.bab);
                     const gA = a.metadata.groupId || '';
                     const gB = b.metadata.groupId || '';
                     if (gA !== gB) return gA.localeCompare(gB);
-
-                    // 5. Time (ASCENDING: Oldest First) -> Fixes "Soal 4 is Soal 2" issue
                     return a.sortTime - b.sortTime;
                 });
 
@@ -648,7 +647,7 @@
                     
                     <!-- FOOTER KARTU (DATE & DELETE) -->
                     <div class="mt-4 pt-3 border-t border-gray-100 dark:border-cyber-700 flex justify-between items-center">
-                        <span class="text-[10px] text-gray-400">${q.updatedAt && q.updatedAt.seconds ? new Date(q.updatedAt.seconds * 1000).toLocaleDateString() : 'Tanggal -'}</span>
+                        <span class="text-[10px] text-gray-400">${q.displayDate}</span>
                         <button onclick="window.deleteQuestion('${q.id}', '${(q.naskah||'').substring(0,20).replace(/'/g, "\\'")}')" class="p-2 text-gray-400 hover:text-red-500 transition-colors bg-transparent rounded-full hover:bg-red-50 dark:hover:bg-red-900/30" title="Hapus Permanen">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
