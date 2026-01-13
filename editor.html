@@ -2780,11 +2780,11 @@ async function bangunPetaKurikulum() {
 			}
 		}
 
-		// ==========================================
-		// PERBAIKAN TOTAL SISTEM FILTER & METADATA
+// ==========================================
+		// FINALISASI SISTEM FILTER & METADATA (STABIL & ANTI-RESET)
 		// ==========================================
 
-		// 1. Definisikan Helper Global (Wajib ada di window agar tidak hilang scope)
+		// 1. Definisikan Helper Global
 		window.getKeyCaseInsensitive = (obj, key) => {
 			if (!obj || !key) return null;
 			const searchKey = String(key).toLowerCase().trim();
@@ -2845,7 +2845,7 @@ async function bangunPetaKurikulum() {
 			}
 		};
 
-		// 4. Fungsi Update Dropdown (Universal & Aman)
+		// 4. Fungsi Update Dropdown (REVISI FINAL: Persistensi Nilai agar BAB tidak visual reset)
 		window.perbaruiDropdownFilter = (mapel, kelas, bab, targetKelasId, targetBabId, targetSubId) => {
 			const kelasSelect = document.getElementById(targetKelasId);
 			const babTarget = document.getElementById(targetBabId);
@@ -2859,7 +2859,6 @@ async function bangunPetaKurikulum() {
 			// A. UPDATE KELAS
 			if (kelasSelect && kelasSelect.tagName === 'SELECT') {
 				const oldVal = kelasSelect.value;
-				// Hanya reset jika ini adalah Filter Bank Soal (bukan metadata input)
 				if (targetKelasId === 'filter-kelas') {
 					kelasSelect.innerHTML = '<option value="">Semua Kelas</option>';
 					if (mapelKey && window.petaKurikulumOtomatis[mapelKey]) {
@@ -2869,14 +2868,20 @@ async function bangunPetaKurikulum() {
 							kelasSelect.appendChild(opt);
 						});
 					}
-					// Restore nilai lama jika masih valid
-					if(oldVal && Array.from(kelasSelect.options).some(o=>o.value===oldVal)) kelasSelect.value = oldVal;
+					// Restore nilai lama jika ada, atau gunakan parameter kelas baru
+					if (kelas) {
+						kelasSelect.value = kelas;
+					} else if(oldVal && Array.from(kelasSelect.options).some(o=>o.value===oldVal)) {
+						kelasSelect.value = oldVal;
+					}
 				}
 			}
 
-			// B. UPDATE BAB
+			// B. UPDATE BAB (BAGIAN PENTING: Restore nilai lama)
 			if (babTarget) {
 				const isSelect = babTarget.tagName === 'SELECT';
+				const oldBabVal = babTarget.value; // Simpan nilai lama sebelum dihapus
+
 				babTarget.innerHTML = isSelect ? '<option value="">Semua BAB</option>' : '';
 				if (mapelKey && kelasKey && window.petaKurikulumOtomatis[mapelKey][kelasKey]) {
 					Object.keys(window.petaKurikulumOtomatis[mapelKey][kelasKey]).sort().forEach(b => {
@@ -2885,6 +2890,17 @@ async function bangunPetaKurikulum() {
 						if (isSelect) opt.textContent = b;
 						babTarget.appendChild(opt);
 					});
+				}
+
+				// RESTORE VALUE: 
+				// 1. Cek apakah ada parameter 'bab' baru yang dikirim
+				// 2. Jika tidak, cek apakah ada nilai lama 'oldBabVal' yang bisa dipakai lagi
+				if (isSelect) {
+					if (bab && Array.from(babTarget.options).some(o => o.value === bab)) {
+						babTarget.value = bab;
+					} else if (oldBabVal && Array.from(babTarget.options).some(o => o.value === oldBabVal)) {
+						babTarget.value = oldBabVal;
+					}
 				}
 			}
 
@@ -2903,7 +2919,7 @@ async function bangunPetaKurikulum() {
 			}
 		};
 
-		// 5. Fungsi Populate Filter Bank Soal (Dipanggil saat modal dibuka)
+		// 5. Fungsi Populate Filter Bank Soal (Memory Based)
 		window.populateFilterDropdowns = () => {
 			const fMapel = document.getElementById('filter-mapel');
 			const fTipe = document.getElementById('filter-tipe');
@@ -2912,7 +2928,11 @@ async function bangunPetaKurikulum() {
 			const fBab = document.getElementById('filter-bab');
 			const fSub = document.getElementById('filter-subbab');
 
-			// Reset Dropdown Bank Soal (Hanya Bank Soal!)
+			// Simpan nilai tipe/kesulitan agar tidak ikut tereset visualnya
+			const oldTipe = fTipe ? fTipe.value : "";
+			const oldDiff = fKesulitan ? fKesulitan.value : "";
+
+			// Reset Dropdown Bank Soal
 			if(fMapel) fMapel.innerHTML = '<option value="">Semua Mapel</option>';
 			if(fKelas) fKelas.innerHTML = '<option value="">Semua Kelas</option>';
 			if(fBab) fBab.innerHTML = '<option value="">Semua BAB</option>';
@@ -2920,7 +2940,7 @@ async function bangunPetaKurikulum() {
 			if(fTipe) fTipe.innerHTML = '<option value="">Semua Tipe</option>';
 			if(fKesulitan) fKesulitan.innerHTML = '<option value="">Semua Level</option>';
 
-			// Isi Mapel dari Memori Global
+			// Isi Mapel dari Memori
 			if (fMapel && window.petaKurikulumOtomatis) {
 				Object.keys(window.petaKurikulumOtomatis).sort().forEach(mp => {
 					const opt = document.createElement('option');
@@ -2932,8 +2952,12 @@ async function bangunPetaKurikulum() {
 			// Isi Statis
 			const types = [{v:'pg',l:'PG'}, {v:'pgk',l:'PGK'}, {v:'bs',l:'BS'}, {v:'esai-singkat',l:'Essai Singkat'}, {v:'esai-kompleks',l:'Essai Kompleks'}];
 			types.forEach(t => fTipe.add(new Option(t.l, t.v)));
-			['X','XI','XII'].forEach(k => fKelas.add(new Option('Kelas '+k, k))); // Default fallback
+			['X','XI','XII'].forEach(k => fKelas.add(new Option('Kelas '+k, k))); 
 			['C1','C2','C3','C4','C5','C6'].forEach(k => fKesulitan.add(new Option(k, k)));
+
+			// Restore Tipe & Level
+			if(oldTipe) fTipe.value = oldTipe;
+			if(oldDiff) fKesulitan.value = oldDiff;
 		};
 
 		// 6. EVENT LISTENER (Diikat Ulang dengan Aman)
@@ -2988,13 +3012,14 @@ async function bangunPetaKurikulum() {
 
 			if(fBab) {
 				fBab.addEventListener('change', () => {
+					// PENTING: Kirim value BAB saat ini sebagai parameter ke-3 agar tidak tereset visualnya
 					window.perbaruiDropdownFilter(fMapel.value, fKelas.value, fBab.value, 'filter-kelas', 'filter-bab', 'filter-subbab');
 				});
 			}
 
 			// Tombol Refresh Manual (Opsional)
-			const btnCari = document.getElementById('search-firebase-btn');
-			// Jika user menekan tombol cari, kita pastikan data tidak hilang
+			const btnCari = document.getElementById('btn-cari-bank');
+			if(btnCari) btnCari.addEventListener('click', window.bangunPetaKurikulum);
 		});
 		</script>
 	<!-- MODAL KONFIRMASI AI (FIXED) -->
